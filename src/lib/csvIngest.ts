@@ -309,3 +309,73 @@ export async function readLogOddsRatios(file: File): Promise<LogOddsResult> {
 
   return { ok: errors.length === 0, map, errors, warnings };
 }
+
+// ---- uniform slot adapter --------------------------------------------------
+//
+// The input builder stores one uniform preview/validation shape per file slot, regardless of
+// whether the file is a table, a formula, or a JSON map. `ingestByKind` maps each input kind to
+// the right validator above and normalizes its result into `ParseMeta`.
+
+/** Which validator to run for a given file slot. */
+export type SlotKind = 'study' | 'rates' | 'reference' | 'covariate' | 'formula' | 'logOddsRatios';
+
+/** Uniform preview + validation metadata stored on a file slot. UI-only — never sent to the SDK. */
+export interface ParseMeta {
+  headers: string[];
+  nRows: number;
+  errors: string[];
+  warnings: string[];
+  badges?: string[];
+  /** Short human summary for non-tabular inputs (formula excerpt, coefficient count). */
+  preview?: string;
+}
+
+function excerpt(text: string, max = 140): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine;
+}
+
+/** Run the validator matching `kind` and normalize it to a `ParseMeta`. */
+export async function ingestByKind(kind: SlotKind, file: File): Promise<ParseMeta> {
+  switch (kind) {
+    case 'study':
+      return toMeta(await validateStudyData(file));
+    case 'rates':
+      return toMeta(await validateRatesTable(file));
+    case 'reference':
+      return toMeta(await validateReferenceDataset(file));
+    case 'covariate':
+      return toMeta(await validateCovariateProfile(file));
+    case 'formula': {
+      const r = await readFormula(file);
+      return {
+        headers: [],
+        nRows: 0,
+        errors: r.errors,
+        warnings: r.warnings,
+        preview: r.text ? excerpt(r.text) : undefined,
+      };
+    }
+    case 'logOddsRatios': {
+      const r = await readLogOddsRatios(file);
+      const n = Object.keys(r.map).length;
+      return {
+        headers: [],
+        nRows: n,
+        errors: r.errors,
+        warnings: r.warnings,
+        preview: n ? `${n} coefficient${n === 1 ? '' : 's'}` : undefined,
+      };
+    }
+  }
+}
+
+function toMeta(r: IngestResult): ParseMeta {
+  return {
+    headers: r.meta.headers,
+    nRows: r.meta.nRows,
+    errors: r.errors,
+    warnings: r.warnings,
+    badges: r.meta.badges,
+  };
+}
