@@ -1,0 +1,158 @@
+import { describe, it, expect } from 'vitest';
+import {
+  validateStudyData,
+  validateRatesTable,
+  validateReferenceDataset,
+  validateCovariateProfile,
+  readFormula,
+  readLogOddsRatios,
+} from './csvIngest';
+
+// Node 18+/22 provides a global `File` (structurally a Blob), which is exactly what the browser
+// passes to these validators — so the tests exercise the real code path.
+const csvFile = (name: string, body: string) => new File([body], name, { type: 'text/csv' });
+const txtFile = (name: string, body: string) => new File([body], name, { type: 'text/plain' });
+const jsonFile = (name: string, body: string) =>
+  new File([body], name, { type: 'application/json' });
+
+describe('validateStudyData', () => {
+  const goodStudy = [
+    'id,study_entry_age,observed_followup,study_exit_age,observed_outcome,time_of_onset',
+    '1,56,11,67,0,Inf',
+    '2,51,6,57,1,55',
+  ].join('\n');
+
+  it('accepts a well-formed study table', async () => {
+    const r = await validateStudyData(csvFile('study.csv', goodStudy));
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+    expect(r.meta.nRows).toBe(2);
+    expect(r.meta.headers).toContain('observed_outcome');
+    expect(r.meta.badges).toBeUndefined();
+  });
+
+  it('errors when observed_outcome is missing', async () => {
+    const body = 'id,study_entry_age,study_exit_age\n1,56,67';
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/observed_outcome/);
+  });
+
+  it('errors when observed_outcome is not binary', async () => {
+    const body = ['study_entry_age,study_exit_age,observed_outcome', '56,67,0', '51,57,2'].join(
+      '\n',
+    );
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/must be 0 or 1/);
+  });
+
+  it('errors when an age column is non-numeric', async () => {
+    const body = ['study_entry_age,study_exit_age,observed_outcome', 'fifty,67,0'].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/study_entry_age.*must be numeric/);
+  });
+
+  it('does not reject "Inf" in time_of_onset', async () => {
+    const r = await validateStudyData(csvFile('study.csv', goodStudy));
+    expect(r.errors.join(' ')).not.toMatch(/time_of_onset/);
+  });
+
+  it('flags nested case-control via sampling_weights', async () => {
+    const body = [
+      'study_entry_age,study_exit_age,observed_outcome,sampling_weights',
+      '56,67,0,0.1',
+      '51,57,1,1',
+    ].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(true);
+    expect(r.meta.badges).toEqual(['ncc']);
+    expect(r.warnings.join(' ')).toMatch(/nested case-control/i);
+  });
+
+  it('warns when exit age precedes entry age', async () => {
+    const body = ['study_entry_age,study_exit_age,observed_outcome', '67,56,0'].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.join(' ')).toMatch(/below/);
+  });
+});
+
+describe('validateRatesTable', () => {
+  it('accepts a valid age,rate table', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n0,0\n1,0.0002'));
+    expect(r.ok).toBe(true);
+    expect(r.meta.nRows).toBe(2);
+  });
+
+  it('errors on a wrong shape (missing rate column)', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age\n0\n1'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/rate/);
+  });
+
+  it('errors on a negative rate', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n0,-1'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/rate/);
+  });
+});
+
+describe('structural validators', () => {
+  it('reference dataset: accepts header + rows, no id required', async () => {
+    const r = await validateReferenceDataset(csvFile('ref.csv', 'a,b\n1,2\n3,4'));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.join(' ')).not.toMatch(/id/);
+  });
+
+  it('reference dataset: errors when empty (header only)', async () => {
+    const r = await validateReferenceDataset(csvFile('ref.csv', 'a,b'));
+    expect(r.ok).toBe(false);
+  });
+
+  it('covariate profile: warns when id absent', async () => {
+    const r = await validateCovariateProfile(csvFile('cov.csv', 'a,b\n1,2'));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.join(' ')).toMatch(/id/);
+  });
+});
+
+describe('readFormula', () => {
+  it('reads a Patsy formula', async () => {
+    const r = await readFormula(txtFile('f.txt', 'oc_ever + C(parity, levels=[]) '));
+    expect(r.ok).toBe(true);
+    expect(r.text).toBe('oc_ever + C(parity, levels=[])');
+  });
+
+  it('errors on an empty formula', async () => {
+    const r = await readFormula(txtFile('f.txt', '   '));
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe('readLogOddsRatios', () => {
+  it('parses a flat number map', async () => {
+    const r = await readLogOddsRatios(jsonFile('lor.json', '{"oc_ever": 0.13, "bbd": 0.41}'));
+    expect(r.ok).toBe(true);
+    expect(r.map.oc_ever).toBeCloseTo(0.13);
+    expect(Object.keys(r.map)).toHaveLength(2);
+  });
+
+  it('errors on invalid JSON', async () => {
+    const r = await readLogOddsRatios(jsonFile('lor.json', '{not json'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/Invalid JSON/);
+  });
+
+  it('errors on non-numeric coefficients', async () => {
+    const r = await readLogOddsRatios(jsonFile('lor.json', '{"oc_ever": "high"}'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/Non-numeric/);
+  });
+
+  it('errors on a non-object payload', async () => {
+    const r = await readLogOddsRatios(jsonFile('lor.json', '[1,2,3]'));
+    expect(r.ok).toBe(false);
+  });
+});
