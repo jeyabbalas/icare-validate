@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useInputStore, selectValidationSummary } from '../../state/inputStore';
 
 const STATUS_ICON: Record<string, string> = {
@@ -19,7 +20,11 @@ function statusColor(status: string): string {
  * shows a single "ready to run" / "needs attention" banner derived from the store selectors.
  */
 export function InputSummaryPanel() {
-  const summary = useInputStore(selectValidationSummary);
+  // Subscribe to the whole (referentially-stable) store state and derive the summary via useMemo.
+  // `selectValidationSummary` builds a fresh object each call, so passing it straight to
+  // `useInputStore(selector)` would break zustand v5's snapshot-stability contract and loop forever.
+  const state = useInputStore();
+  const summary = useMemo(() => selectValidationSummary(state), [state]);
 
   const attention = summary.items.filter(
     (it) => (it.required && it.status !== 'valid') || it.status === 'invalid',
