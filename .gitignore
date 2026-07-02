@@ -1,0 +1,23 @@
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+dev-dist
+
+# Vendored Pyodide runtime (tens of MB) — regenerate with `npm run vendor` (CI does too)
+public/pyodide/
+
+# Editor / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.local
+.DS_Store
+
+# Keep tracked: package-lock.json, public/examples/, public/.nojekyll
