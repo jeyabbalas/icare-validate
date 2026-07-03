@@ -52,7 +52,7 @@ export type ModelFileKey =
   | 'applyCovariateProfile'
   | 'applySnpProfile';
 
-const MODEL_FILE_KEYS: ModelFileKey[] = [
+export const MODEL_FILE_KEYS: ModelFileKey[] = [
   'modelDiseaseIncidenceRates',
   'modelCompetingIncidenceRates',
   'modelCovariateFormula',
@@ -130,7 +130,7 @@ type ConfigPatch = Partial<
   >
 >;
 
-interface InputState {
+export interface InputState {
   mode: InputMode;
 
   study: FileSlot;
