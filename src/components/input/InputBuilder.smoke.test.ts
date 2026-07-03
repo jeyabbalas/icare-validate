@@ -9,7 +9,10 @@ import { InputBuilder } from './InputBuilder';
 describe('InputBuilder', () => {
   it('renders without crashing and shows the key controls', () => {
     const html = renderToStaticMarkup(createElement(InputBuilder));
-    expect(html).toContain('Load iCARE-Lit');
+    expect(html).toContain('Load example');
+    expect(html).toContain('iCARE-Lit (ge50)');
+    expect(html).toContain('iCARE-Lit (lt50)');
+    expect(html).toContain('BPC3');
     expect(html).toContain('Validation mode');
     expect(html).toContain('Input summary');
     expect(html).toContain('Study data');

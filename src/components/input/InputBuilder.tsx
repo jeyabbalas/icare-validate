@@ -1,4 +1,5 @@
 import type { SlotKind } from '../../lib/csvIngest';
+import { EXAMPLE_IDS, EXAMPLE_LABELS } from '../../lib/examples';
 import { useInputStore, type InputMode, type ModelFileKey } from '../../state/inputStore';
 import { useBinSettingsStore } from '../../state/binSettingsStore';
 import { FileDropSlot } from './FileDropSlot';
@@ -107,27 +108,31 @@ function ExampleLoaderBar() {
   const reset = useInputStore((s) => s.reset);
 
   return (
-    <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-      <button
-        type="button"
-        disabled={loading}
-        onClick={() => void loadExample('icare-lit-ge50')}
-        style={{
-          border: '1px solid var(--app-border)',
-          borderRadius: 'var(--app-radius)',
-          background: 'var(--app-accent)',
-          color: 'var(--app-accent-fg)',
-          padding: '8px 12px',
-          fontWeight: 600,
-        }}
-      >
-        {loading ? 'Loading example…' : 'Load iCARE-Lit (ge50) example'}
-      </button>
-      {exampleId && (
-        <span style={{ fontSize: 12, color: 'var(--app-muted)' }}>
-          Loaded example: <strong style={{ color: 'var(--app-fg)' }}>{exampleId}</strong>
-        </span>
-      )}
+    <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>Load example:</span>
+      {EXAMPLE_IDS.map((id) => {
+        const active = exampleId === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            disabled={loading}
+            onClick={() => void loadExample(id)}
+            aria-pressed={active}
+            style={{
+              border: `1px solid ${active ? 'var(--app-accent)' : 'var(--app-border)'}`,
+              borderRadius: 'var(--app-radius)',
+              background: active ? 'var(--app-accent)' : 'var(--app-surface-2)',
+              color: active ? 'var(--app-accent-fg)' : 'var(--app-fg)',
+              padding: '8px 12px',
+              fontWeight: 600,
+            }}
+          >
+            {EXAMPLE_LABELS[id]}
+          </button>
+        );
+      })}
+      {loading && <span style={{ fontSize: 12, color: 'var(--app-muted)' }}>Loading…</span>}
       <button
         type="button"
         onClick={() => reset()}

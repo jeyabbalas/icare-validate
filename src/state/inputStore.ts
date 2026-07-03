@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ParseMeta } from '../lib/csvIngest';
-import { loadIcareLitGe50 } from '../lib/examples';
+import { loadExample as fetchExample, type ExampleId } from '../lib/examples';
 import { useBinSettingsStore } from './binSettingsStore';
 
 // The input builder's state model. It covers both validation modes:
@@ -159,7 +159,7 @@ interface InputState {
   referenceLinearPredictors: NumericVectorSlot;
   linearPredictorCutoffs: number[] | null;
 
-  exampleId: 'icare-lit-ge50' | null;
+  exampleId: ExampleId | null;
   exampleLoading: boolean;
   exampleError: string | null;
 
@@ -170,7 +170,7 @@ interface InputState {
   clearModelFile: (key: ModelFileKey) => void;
   setConfig: (patch: ConfigPatch) => void;
   setReferenceVector: (key: ReferenceVectorKey, slot: NumericVectorSlot) => void;
-  loadExample: (id: 'icare-lit-ge50') => Promise<void>;
+  loadExample: (id: ExampleId) => Promise<void>;
   reset: () => void;
 }
 
@@ -221,7 +221,7 @@ export const useInputStore = create<InputState>((set) => ({
   loadExample: async (id) => {
     set({ exampleLoading: true, exampleError: null });
     try {
-      const { study, modelFiles, config } = await loadIcareLitGe50();
+      const { study, modelFiles, config } = await fetchExample(id);
       set({
         ...initialState(),
         mode: 'A',
@@ -230,6 +230,7 @@ export const useInputStore = create<InputState>((set) => ({
         riskInterval: config.riskInterval,
         datasetName: config.datasetName,
         modelName: config.modelName,
+        modelFamilyHistoryVariableName: config.modelFamilyHistoryVariableName ?? '',
         exampleId: id,
         exampleLoading: false,
       });

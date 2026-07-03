@@ -32,6 +32,10 @@ describe('InputBuilder (client mount)', () => {
     });
     expect(container.textContent).toContain('Input summary');
     expect(container.textContent).toContain('need attention');
+    // All three one-click examples are offered.
+    expect(container.textContent).toContain('iCARE-Lit (ge50)');
+    expect(container.textContent).toContain('iCARE-Lit (lt50)');
+    expect(container.textContent).toContain('BPC3');
     act(() => root.unmount());
   });
 

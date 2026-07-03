@@ -284,11 +284,16 @@ export async function validateRatesTable(file: File): Promise<IngestResult> {
 
   const badAge: number[] = [];
   const badRate: number[] = [];
+  const coveredAges: number[] = [];
   table.rows.forEach((row, i) => {
-    const age = Number(row.age);
-    const rate = Number(row.rate);
-    if (!isFiniteNumeric(row.age) || age < 0) badAge.push(i);
-    if (!isFiniteNumeric(row.rate) || rate < 0) badRate.push(i);
+    const ageOk = isFiniteNumeric(row.age) && Number(row.age) >= 0;
+    if (!ageOk) badAge.push(i);
+    // A rate may be blank: py-icare tolerates missing rates for ages outside the study span (it only
+    // requires coverage *across* that span, checked cross-file). A present rate must be non-negative.
+    const rateStr = row.rate?.trim() ?? '';
+    if (rateStr === '') return;
+    if (!isFiniteNumeric(rateStr) || Number(rateStr) < 0) badRate.push(i);
+    else if (ageOk) coveredAges.push(Number(row.age));
   });
   if (badAge.length) {
     result.errors.push(
@@ -297,13 +302,13 @@ export async function validateRatesTable(file: File): Promise<IngestResult> {
   }
   if (badRate.length) {
     result.errors.push(
-      `\`rate\` must be a non-negative number — ${badRate.length} bad row(s) (e.g. row ${sampleRows(badRate)}).`,
+      `\`rate\` must be a non-negative number where present — ${badRate.length} bad row(s) (e.g. row ${sampleRows(badRate)}).`,
     );
   }
 
-  // The sorted set of ages present, for the cross-file age-coverage check.
-  const ages = table.rows.map((r) => Number(r.age)).filter((n) => Number.isFinite(n));
-  result.meta.stats = { rateAges: Array.from(new Set(ages)).sort((a, b) => a - b) };
+  // Ages with a valid, present rate — the cross-file coverage check treats a blank-rate age as not
+  // covered, matching py-icare's pd.isna handling.
+  result.meta.stats = { rateAges: Array.from(new Set(coveredAges)).sort((a, b) => a - b) };
 
   return finalize(result);
 }

@@ -145,6 +145,12 @@ describe('validateRatesTable', () => {
     const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n2,0.1\n0,0.2\n1,0.3'));
     expect(r.meta.stats?.rateAges).toEqual([0, 1, 2]);
   });
+
+  it('tolerates a blank rate (missing for an out-of-range age) but excludes it from coverage', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n50,0.01\n85,\n86,'));
+    expect(r.ok).toBe(true); // blank rates are not a blocking error
+    expect(r.meta.stats?.rateAges).toEqual([50]); // ages 85, 86 have no rate → not covered
+  });
 });
 
 describe('structural validators', () => {
