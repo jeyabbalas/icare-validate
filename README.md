@@ -5,8 +5,9 @@ Risk Estimation) absolute-risk models, built on the [`wasm-icare`](https://githu
 SDK (py-icare running in a Pyodide Web Worker). All computation runs in the browser — no server — and
 the app works fully offline after the first load. Deployed to GitHub Pages.
 
-> **Status: Phase 0** — scaffolding, offline runtime, and the engine service. Input builder,
-> visualizations, and the results dashboard arrive in later phases.
+> **Status: Phase 1** — offline runtime + engine service, and the input builder (both modes, file
+> ingestion, validation, and one-click examples). Visualizations and the results dashboard arrive in
+> later phases.
 
 ## Prerequisites
 
@@ -53,8 +54,21 @@ asset URLs are built from `import.meta.env.BASE_URL` so they resolve under the p
 
 ## Example data
 
-`public/examples/icare-lit/` holds the iCARE-Lit (ge50) cohort fixtures used by the smoke test, copied
-from `wasm-icare`'s `test/fixtures/icare-lit`.
+One-click examples (loadable in the input builder), copied from `wasm-icare`'s `test/fixtures`:
+
+- **iCARE-Lit (ge50 / lt50)** — cohort, unweighted — `public/examples/icare-lit/`.
+- **BPC3** — nested case-control (inverse-probability weighting), 72 SNPs, a
+  `C(menopause_hrt):C(bmi)` interaction, and a family-history variable — `public/examples/bpc3/`.
+
+## Troubleshooting
+
+**Console line `[FeatureLifecycle:sentence-player] Re-entrant handleLifecycle call …`** — this is
+**not** emitted by this app. None of those identifiers (`sentence-player`, `FeatureLifecycle`,
+`handleLifecycle`) exist anywhere in the source or its dependencies; the message comes from a
+browser extension's content script (a read-aloud / text-to-speech extension) injected into the page.
+To confirm: in DevTools → Sources the emitting `chunk-*.js` resolves to a `chrome-extension://…`
+origin (not the dev server), and the line disappears in an Incognito window with extensions
+disabled. It is harmless and unrelated to iCARE-validate.
 
 ## Tech stack
 

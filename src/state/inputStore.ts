@@ -244,6 +244,8 @@ export const useInputStore = create<InputState>((set) => ({
 
   reset: () => {
     set(initialState());
+    // Percentiles/seed live in a separate store; clear them too so Reset is a clean slate.
+    useBinSettingsStore.getState().reset();
   },
 }));
 

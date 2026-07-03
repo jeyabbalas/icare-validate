@@ -7,6 +7,7 @@ import {
   MODE_A_REQUIRED,
   type FileSlot,
 } from './inputStore';
+import { useBinSettingsStore } from './binSettingsStore';
 import type { ParseMeta, ParseStats } from '../lib/csvIngest';
 
 /** A filled slot whose parse metadata can be tuned per test (headers, nRows, stats). */
@@ -147,6 +148,14 @@ describe('input readiness selectors', () => {
     useInputStore.getState().setStudy(validSlot());
     useInputStore.getState().reset();
     expect(useInputStore.getState().study).toEqual(emptySlot());
+  });
+
+  it('reset also restores bin-settings defaults (percentiles/seed)', () => {
+    useBinSettingsStore.getState().set({ numberOfPercentiles: 4, seed: 999 });
+    useInputStore.getState().reset();
+    const bin = useBinSettingsStore.getState();
+    expect(bin.numberOfPercentiles).toBe(10);
+    expect(bin.seed).toBe(50);
   });
 });
 
