@@ -1,5 +1,17 @@
 import { useId } from 'react';
-import type { RiskIntervalConfig } from '../../state/inputStore';
+import type { AgeSpecValue, RiskIntervalConfig } from '../../state/inputStore';
+
+const hintStyle: React.CSSProperties = { fontSize: 11, color: 'var(--app-muted)', marginTop: 2 };
+
+/** Parse a free-text field of comma/space/newline-separated tokens into finite numbers. */
+function parseNumberList(text: string): number[] {
+  return text
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => s !== '')
+    .map(Number)
+    .filter((n) => Number.isFinite(n));
+}
 
 const inputStyle: React.CSSProperties = {
   border: '1px solid var(--app-border)',
@@ -133,18 +145,83 @@ export function RiskIntervalControl({
           type="text"
           placeholder="e.g. 5, 5, 10 (one per subject)"
           value={value.values.join(', ')}
-          onChange={(e) =>
-            onChange({
-              kind: 'custom',
-              values: e.target.value
-                .split(/[,\s]+/)
-                .map((s) => Number(s.trim()))
-                .filter((n) => Number.isFinite(n)),
-            })
-          }
+          onChange={(e) => onChange({ kind: 'custom', values: parseNumberList(e.target.value) })}
           style={{ ...inputStyle, marginTop: 6 }}
         />
       )}
+    </div>
+  );
+}
+
+/** A free-text field that parses to `number[] | null` (e.g. linear-predictor cutoffs). */
+export function NumericListField({
+  label,
+  values,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  values: number[] | null;
+  onChange: (v: number[] | null) => void;
+  placeholder?: string;
+  hint?: string;
+}) {
+  const id = useId();
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label htmlFor={id} style={labelStyle}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        placeholder={placeholder}
+        value={values?.join(', ') ?? ''}
+        onChange={(e) => {
+          const parsed = parseNumberList(e.target.value);
+          onChange(parsed.length ? parsed : null);
+        }}
+        style={inputStyle}
+      />
+      {hint && <div style={hintStyle}>{hint}</div>}
+    </div>
+  );
+}
+
+/** Edits an SDK `AgeSpec`: one token → a single number, several → an array, empty → `null`. */
+export function AgeSpecField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  value: AgeSpecValue;
+  onChange: (v: AgeSpecValue) => void;
+  placeholder?: string;
+  hint?: string;
+}) {
+  const id = useId();
+  const text = value == null ? '' : Array.isArray(value) ? value.join(', ') : String(value);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label htmlFor={id} style={labelStyle}>
+        {label}
+      </label>
+      <input
+        id={id}
+        type="text"
+        placeholder={placeholder}
+        value={text}
+        onChange={(e) => {
+          const nums = parseNumberList(e.target.value);
+          onChange(nums.length === 0 ? null : nums.length === 1 ? nums[0] : nums);
+        }}
+        style={inputStyle}
+      />
+      {hint && <div style={hintStyle}>{hint}</div>}
     </div>
   );
 }

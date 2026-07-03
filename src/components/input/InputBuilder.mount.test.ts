@@ -34,4 +34,18 @@ describe('InputBuilder (client mount)', () => {
     expect(container.textContent).toContain('need attention');
     act(() => root.unmount());
   });
+
+  it('renders the Mode B surface (both columns, population rates, reference panel)', () => {
+    const root = createRoot(container);
+    act(() => {
+      useInputStore.getState().setMode('B');
+      root.render(createElement(InputBuilder));
+    });
+    expect(container.textContent).toContain('Pre-computed risks');
+    expect(container.textContent).toContain('Predicted-risk column');
+    expect(container.textContent).toContain('Linear-predictor column');
+    expect(container.textContent).toContain('Disease incidence rates (population)');
+    expect(container.textContent).toContain('Reference population');
+    act(() => root.unmount());
+  });
 });
