@@ -89,6 +89,28 @@ export type RiskIntervalConfig =
   | { kind: 'years'; years: number }
   | { kind: 'custom'; values: number[] };
 
+/** SDK `AgeSpec` = a single age or a per-instance array. `null` = not provided. */
+export type AgeSpecValue = number | number[] | null;
+
+/**
+ * The reference-risk arrays (`referencePredictedRisks` / `referenceLinearPredictors`) are typed as
+ * `number[]` in the SDK options, so — unlike the file slots whose Blob is sent verbatim — they are
+ * parsed client-side into numbers. This slot keeps the parsed values plus display/validation meta.
+ */
+export interface NumericVectorSlot {
+  values: number[] | null;
+  filename: string | null;
+  nRows: number;
+  errors: string[];
+  warnings: string[];
+}
+
+export function emptyVectorSlot(): NumericVectorSlot {
+  return { values: null, filename: null, nRows: 0, errors: [], warnings: [] };
+}
+
+export type ReferenceVectorKey = 'referencePredictedRisks' | 'referenceLinearPredictors';
+
 // ---- Store -----------------------------------------------------------------
 
 type ConfigPatch = Partial<
@@ -102,8 +124,8 @@ type ConfigPatch = Partial<
     | 'numImputations'
     | 'predictedRiskVariableName'
     | 'linearPredictorVariableName'
-    | 'referencePredictedRisks'
-    | 'referenceLinearPredictors'
+    | 'referenceEntryAge'
+    | 'referenceExitAge'
     | 'linearPredictorCutoffs'
   >
 >;
@@ -128,9 +150,13 @@ interface InputState {
   datasetName: string;
   modelName: string;
 
-  // Advanced / optional reference-population inputs.
-  referencePredictedRisks: number[] | null;
-  referenceLinearPredictors: number[] | null;
+  // Advanced / optional reference-population inputs (enable the reference calibration curve).
+  // Mode A: the model computes reference risks from the reference dataset given these ages.
+  referenceEntryAge: AgeSpecValue;
+  referenceExitAge: AgeSpecValue;
+  // Mode B: the user supplies precomputed reference risks directly (parsed from an uploaded file).
+  referencePredictedRisks: NumericVectorSlot;
+  referenceLinearPredictors: NumericVectorSlot;
   linearPredictorCutoffs: number[] | null;
 
   exampleId: 'icare-lit-ge50' | null;
@@ -143,13 +169,21 @@ interface InputState {
   setModelFile: (key: ModelFileKey, slot: FileSlot) => void;
   clearModelFile: (key: ModelFileKey) => void;
   setConfig: (patch: ConfigPatch) => void;
+  setReferenceVector: (key: ReferenceVectorKey, slot: NumericVectorSlot) => void;
   loadExample: (id: 'icare-lit-ge50') => Promise<void>;
   reset: () => void;
 }
 
 function initialState(): Omit<
   InputState,
-  'setMode' | 'setStudy' | 'setModelFile' | 'clearModelFile' | 'setConfig' | 'loadExample' | 'reset'
+  | 'setMode'
+  | 'setStudy'
+  | 'setModelFile'
+  | 'clearModelFile'
+  | 'setConfig'
+  | 'setReferenceVector'
+  | 'loadExample'
+  | 'reset'
 > {
   return {
     mode: 'A',
@@ -163,8 +197,10 @@ function initialState(): Omit<
     riskInterval: { kind: 'total-followup' },
     datasetName: '',
     modelName: '',
-    referencePredictedRisks: null,
-    referenceLinearPredictors: null,
+    referenceEntryAge: null,
+    referenceExitAge: null,
+    referencePredictedRisks: emptyVectorSlot(),
+    referenceLinearPredictors: emptyVectorSlot(),
     linearPredictorCutoffs: null,
     exampleId: null,
     exampleLoading: false,
@@ -180,6 +216,7 @@ export const useInputStore = create<InputState>((set) => ({
   setModelFile: (key, slot) => set((s) => ({ modelFiles: { ...s.modelFiles, [key]: slot } })),
   clearModelFile: (key) => set((s) => ({ modelFiles: { ...s.modelFiles, [key]: emptySlot() } })),
   setConfig: (patch) => set(patch),
+  setReferenceVector: (key, slot) => set({ [key]: slot } as Pick<InputState, ReferenceVectorKey>),
 
   loadExample: async (id) => {
     set({ exampleLoading: true, exampleError: null });
@@ -280,18 +317,39 @@ export function selectValidationSummary(s: InputState): ValidationSummary {
       items.push(slotItem(key, MODEL_FILE_LABELS[key], required, slot));
     }
   } else {
-    const hasColumn =
-      s.predictedRiskVariableName.trim() !== '' || s.linearPredictorVariableName.trim() !== '';
-    items.push({
-      key: 'modeBColumns',
-      label: 'Predicted-risk / linear-predictor column',
-      required: true,
-      status: hasColumn ? 'valid' : 'missing',
-      errors: hasColumn
-        ? []
-        : ['Enter a predicted-risk or linear-predictor column name present in the study data.'],
-      warnings: [],
-    });
+    // Mode B needs BOTH columns present in the study data: py-icare only uses precomputed risks
+    // when predicted_risk AND linear_predictor are both there — supplying one alone silently falls
+    // back to rebuilding the model. When the study headers are known, verify the named column exists.
+    const studyHeaders = s.study.parse?.headers;
+    const columnItem = (key: string, label: string, value: string): ValidationSummaryItem => {
+      const name = value.trim();
+      const errors: string[] = [];
+      let status: ValidationSummaryItem['status'];
+      if (name === '') {
+        status = 'missing';
+        errors.push(`Enter the ${label.toLowerCase()} present in the study data.`);
+      } else if (studyHeaders && studyHeaders.length > 0 && !studyHeaders.includes(name)) {
+        status = 'invalid';
+        errors.push(`Column \`${name}\` was not found in the study data headers.`);
+      } else {
+        status = 'valid';
+      }
+      return { key, label, required: true, status, errors, warnings: [] };
+    };
+    items.push(
+      columnItem('predictedRiskColumn', 'Predicted-risk column', s.predictedRiskVariableName),
+    );
+    items.push(
+      columnItem('linearPredictorColumn', 'Linear-predictor column', s.linearPredictorVariableName),
+    );
+
+    // Optional: population disease-incidence rates add the cohort-vs-population incidence comparison.
+    const rates = s.modelFiles.modelDiseaseIncidenceRates;
+    if (slotFilled(rates)) {
+      items.push(
+        slotItem('modelDiseaseIncidenceRates', 'Disease incidence rates (population)', false, rates),
+      );
+    }
   }
 
   const isNcc = Boolean(s.study.parse?.badges?.includes('ncc'));

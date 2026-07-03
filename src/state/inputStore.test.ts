@@ -56,13 +56,54 @@ describe('input readiness selectors', () => {
     expect(selectValidationSummary(useInputStore.getState()).isNcc).toBe(true);
   });
 
-  it('Mode B: a predicted-risk column name flips readiness green', () => {
+  const studyWithColumns = (): FileSlot => ({
+    ...validSlot(),
+    parse: {
+      headers: ['id', 'predicted_risk', 'linear_predictor'],
+      nRows: 1,
+      errors: [],
+      warnings: [],
+    },
+  });
+
+  it('Mode B: needs BOTH columns present in the study headers to be ready', () => {
     const store = useInputStore.getState();
     store.setMode('B');
-    store.setStudy(validSlot());
-    expect(selectIsReadyToRun(useInputStore.getState())).toBe(false); // no column yet
+    store.setStudy(studyWithColumns());
+    expect(selectIsReadyToRun(useInputStore.getState())).toBe(false); // no columns yet
     useInputStore.getState().setConfig({ predictedRiskVariableName: 'predicted_risk' });
-    expect(selectIsReadyToRun(useInputStore.getState())).toBe(true);
+    expect(selectIsReadyToRun(useInputStore.getState())).toBe(false); // only one column
+    useInputStore.getState().setConfig({ linearPredictorVariableName: 'linear_predictor' });
+    expect(selectIsReadyToRun(useInputStore.getState())).toBe(true); // both present
+  });
+
+  it('Mode B: a column name absent from the study headers is invalid', () => {
+    const store = useInputStore.getState();
+    store.setMode('B');
+    store.setStudy(studyWithColumns());
+    store.setConfig({
+      predictedRiskVariableName: 'predicted_risk',
+      linearPredictorVariableName: 'nope',
+    });
+    const summary = selectValidationSummary(useInputStore.getState());
+    expect(summary.ready).toBe(false);
+    expect(summary.items.find((i) => i.key === 'linearPredictorColumn')?.status).toBe('invalid');
+  });
+
+  it('Mode B: an optional population disease-rates slot appears once filled', () => {
+    const store = useInputStore.getState();
+    store.setMode('B');
+    store.setStudy(studyWithColumns());
+    store.setConfig({
+      predictedRiskVariableName: 'predicted_risk',
+      linearPredictorVariableName: 'linear_predictor',
+    });
+    store.setModelFile('modelDiseaseIncidenceRates', validSlot());
+    const summary = selectValidationSummary(useInputStore.getState());
+    const item = summary.items.find((i) => i.key === 'modelDiseaseIncidenceRates');
+    expect(item?.required).toBe(false);
+    expect(item?.status).toBe('valid');
+    expect(summary.ready).toBe(true); // a valid optional slot does not block
   });
 
   it('an invalid risk interval (0 years) blocks readiness', () => {
