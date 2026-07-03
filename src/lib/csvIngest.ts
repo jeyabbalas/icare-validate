@@ -334,6 +334,49 @@ export async function validateCovariateProfile(file: File): Promise<IngestResult
   return finalize(result);
 }
 
+// ---- SNP info --------------------------------------------------------------
+
+/**
+ * Validate the SNP info table. py-icare's `check_snp_info` requires the three named columns (a
+ * blocking error); we additionally warn when a frequency falls outside [0, 1] or an odds ratio is
+ * non-positive.
+ */
+export async function validateSnpInfo(file: File): Promise<IngestResult> {
+  const table = await readDelimited(file);
+  const result = baseResult(table);
+  if (!requireNonEmpty(table, result)) return finalize(result);
+
+  const headers = new Set(table.headers);
+  const required = ['snp_name', 'snp_odds_ratio', 'snp_freq'] as const;
+  const missing = required.filter((h) => !headers.has(h));
+  if (missing.length) {
+    result.errors.push(
+      `Missing required SNP column(s): ${missing.join(', ')} (expected snp_name, snp_odds_ratio, snp_freq).`,
+    );
+    return finalize(result);
+  }
+
+  const badFreq: number[] = [];
+  const badOr: number[] = [];
+  table.rows.forEach((row, i) => {
+    const freq = Number(row.snp_freq);
+    const or = Number(row.snp_odds_ratio);
+    if (!isFiniteNumeric(row.snp_freq) || freq < 0 || freq > 1) badFreq.push(i);
+    if (!isFiniteNumeric(row.snp_odds_ratio) || or <= 0) badOr.push(i);
+  });
+  if (badFreq.length) {
+    result.warnings.push(
+      `\`snp_freq\` should be a frequency in [0, 1] — ${badFreq.length} row(s) are not (e.g. row ${sampleRows(badFreq)}).`,
+    );
+  }
+  if (badOr.length) {
+    result.warnings.push(
+      `\`snp_odds_ratio\` should be a positive number — ${badOr.length} row(s) are not (e.g. row ${sampleRows(badOr)}).`,
+    );
+  }
+  return finalize(result);
+}
+
 // ---- formula (.txt) --------------------------------------------------------
 
 export interface FormulaResult {
@@ -490,7 +533,14 @@ export async function readNumericVector(file: File): Promise<NumericVectorResult
 // the right validator above and normalizes its result into `ParseMeta`.
 
 /** Which validator to run for a given file slot. */
-export type SlotKind = 'study' | 'rates' | 'reference' | 'covariate' | 'formula' | 'logOddsRatios';
+export type SlotKind =
+  | 'study'
+  | 'rates'
+  | 'reference'
+  | 'covariate'
+  | 'formula'
+  | 'logOddsRatios'
+  | 'snpInfo';
 
 /** Uniform preview + validation metadata stored on a file slot. UI-only — never sent to the SDK. */
 export interface ParseMeta {
@@ -521,6 +571,8 @@ export async function ingestByKind(kind: SlotKind, file: File): Promise<ParseMet
       return toMeta(await validateReferenceDataset(file));
     case 'covariate':
       return toMeta(await validateCovariateProfile(file));
+    case 'snpInfo':
+      return toMeta(await validateSnpInfo(file));
     case 'formula': {
       const r = await readFormula(file);
       return {

@@ -59,11 +59,18 @@ const MODE_A_PRIMARY: ModelFileSpec[] = [
 ];
 
 const MODE_A_SNP: ModelFileSpec[] = [
-  { key: 'modelSnpInfo', label: 'SNP info', kind: 'reference', accept: '.csv', optional: true },
+  {
+    key: 'modelSnpInfo',
+    label: 'SNP info',
+    kind: 'snpInfo',
+    accept: '.csv',
+    optional: true,
+    hint: 'CSV with columns: snp_name, snp_odds_ratio, snp_freq',
+  },
   {
     key: 'applySnpProfile',
     label: 'SNP profile',
-    kind: 'reference',
+    kind: 'covariate',
     accept: '.csv',
     optional: true,
   },

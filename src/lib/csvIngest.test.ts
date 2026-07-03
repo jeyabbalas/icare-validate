@@ -4,6 +4,7 @@ import {
   validateRatesTable,
   validateReferenceDataset,
   validateCovariateProfile,
+  validateSnpInfo,
   readFormula,
   readLogOddsRatios,
   readNumericVector,
@@ -162,6 +163,29 @@ describe('structural validators', () => {
     const r = await validateCovariateProfile(csvFile('cov.csv', 'a,b\n1,2'));
     expect(r.ok).toBe(true);
     expect(r.warnings.join(' ')).toMatch(/id/);
+  });
+});
+
+describe('validateSnpInfo', () => {
+  it('accepts a well-formed SNP info table', async () => {
+    const body = 'snp_name,snp_odds_ratio,snp_freq\nrs1,1.2,0.3\nrs2,0.9,0.5';
+    const r = await validateSnpInfo(csvFile('snps.csv', body));
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+
+  it('errors when a required SNP column is missing', async () => {
+    const r = await validateSnpInfo(csvFile('snps.csv', 'snp_name,snp_freq\nrs1,0.3'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/snp_odds_ratio/);
+  });
+
+  it('warns (advisory) on out-of-range frequency and non-positive odds ratio', async () => {
+    const body = 'snp_name,snp_odds_ratio,snp_freq\nrs1,0,1.4\nrs2,1.1,0.5';
+    const r = await validateSnpInfo(csvFile('snps.csv', body));
+    expect(r.ok).toBe(true); // ranges are advisory
+    expect(r.warnings.join(' ')).toMatch(/snp_freq/);
+    expect(r.warnings.join(' ')).toMatch(/snp_odds_ratio/);
   });
 });
 
