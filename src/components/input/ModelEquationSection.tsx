@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { readDelimited, readFormula, readLogOddsRatios } from '../../lib/csvIngest';
+import { fileKey, slotToFile } from '../../lib/slotFiles';
 import {
   buildModel,
   formatNumber,
@@ -76,23 +77,6 @@ const toggleBtn: React.CSSProperties = {
   padding: '2px 8px',
   fontSize: 12,
 };
-
-// ---- slot → content helpers ------------------------------------------------
-
-function fileKey(slot: FileSlot): string {
-  return slot.file
-    ? `${slot.file.name}:${slot.file.size}:${slot.file.lastModified}`
-    : (slot.url ?? '');
-}
-
-async function slotToFile(slot: FileSlot): Promise<File> {
-  if (slot.file) return slot.file;
-  if (slot.url) {
-    const blob = await (await fetch(slot.url)).blob();
-    return new File([blob], slot.filename ?? 'file');
-  }
-  throw new Error('empty slot');
-}
 
 type EqState =
   | { status: 'empty' }
