@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useInputStore, selectValidationSummary } from '../../state/inputStore';
+import { RunValidationButton } from './RunValidationButton';
 
 const STATUS_ICON: Record<string, string> = {
   valid: '✓',
@@ -97,6 +98,8 @@ export function InputSummaryPanel() {
           ? '✓ Ready to run validation'
           : `${attention} item${attention === 1 ? '' : 's'} need attention`}
       </div>
+
+      <RunValidationButton />
     </section>
   );
 }

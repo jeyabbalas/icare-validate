@@ -74,3 +74,25 @@ a {
 .katex {
   color: var(--app-fg);
 }
+
+/* Indeterminate spinner for the Validate step (the SDK exposes no boot/compute progress). */
+@keyframes icv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icv-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--app-border);
+  border-top-color: var(--app-accent);
+  animation: icv-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icv-spinner {
+    animation-duration: 2.4s;
+  }
+}
