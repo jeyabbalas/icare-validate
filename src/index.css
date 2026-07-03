@@ -67,3 +67,10 @@ button {
 a {
   color: var(--app-accent);
 }
+
+/* KaTeX glyphs paint in currentColor; anchor them to the app foreground so the rendered math tracks
+   light/dark. (Malformed-input error nodes keep their own errorColor from the render options.) */
+.katex-host,
+.katex {
+  color: var(--app-fg);
+}

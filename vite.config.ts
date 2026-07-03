@@ -54,8 +54,9 @@ export default defineConfig({
       },
       workbox: {
         // `csv,txt` are REQUIRED so the iCARE-Lit example fixtures are precached for offline use;
-        // `wasm,data,whl,zip` cover the vendored Pyodide runtime.
-        globPatterns: ['**/*.{js,css,html,mjs,wasm,data,whl,json,zip,csv,txt,svg,png}'],
+        // `wasm,data,whl,zip` cover the vendored Pyodide runtime; `woff,woff2,ttf` cover KaTeX's fonts
+        // (emitted by its bundled CSS) so offline math typesets with correct metrics, not fallbacks.
+        globPatterns: ['**/*.{js,css,html,mjs,wasm,data,whl,json,zip,csv,txt,svg,png,woff,woff2,ttf}'],
         // Default is 2 MiB, which silently drops the large Pyodide assets AND (>=0.20.2) errors the build.
         maximumFileSizeToCacheInBytes: 150 * 1024 * 1024,
         navigateFallback: `${base}index.html`,
