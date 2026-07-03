@@ -5,6 +5,7 @@ import { useBinSettingsStore } from '../../state/binSettingsStore';
 import { DataPreviewSection } from './DataPreviewSection';
 import { FileDropSlot } from './FileDropSlot';
 import { InputSummaryPanel } from './InputSummaryPanel';
+import { ModelEquationSection } from './ModelEquationSection';
 import { ReferencePopulationPanel } from './ReferencePopulationPanel';
 import { NumberField, NumericListField, RiskIntervalControl, TextField } from './fields';
 
@@ -97,6 +98,7 @@ export function InputBuilder() {
         <div>{mode === 'A' ? <ModeAPanel /> : <ModeBPanel />}</div>
         <InputSummaryPanel />
       </div>
+      <ModelEquationSection />
       <DataPreviewSection />
     </div>
   );
