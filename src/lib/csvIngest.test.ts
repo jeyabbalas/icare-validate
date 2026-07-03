@@ -6,6 +6,7 @@ import {
   validateCovariateProfile,
   readFormula,
   readLogOddsRatios,
+  readNumericVector,
 } from './csvIngest';
 
 // Node 18+/22 provides a global `File` (structurally a Blob), which is exactly what the browser
@@ -154,5 +155,44 @@ describe('readLogOddsRatios', () => {
   it('errors on a non-object payload', async () => {
     const r = await readLogOddsRatios(jsonFile('lor.json', '[1,2,3]'));
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('readNumericVector', () => {
+  it('parses a JSON array of numbers', async () => {
+    const r = await readNumericVector(jsonFile('ref.json', '[0.1, 0.2, 0.3]'));
+    expect(r.ok).toBe(true);
+    expect(r.values).toEqual([0.1, 0.2, 0.3]);
+  });
+
+  it('parses a one-column CSV, tolerating a header token', async () => {
+    const r = await readNumericVector(csvFile('ref.csv', 'predicted_risk\n0.01\n0.5\n0.9'));
+    expect(r.ok).toBe(true);
+    expect(r.values).toEqual([0.01, 0.5, 0.9]);
+    expect(r.warnings.join(' ')).toMatch(/header token/);
+  });
+
+  it('parses whitespace/comma-separated numbers with no header', async () => {
+    const r = await readNumericVector(txtFile('ref.txt', '1 2, 3\n4'));
+    expect(r.ok).toBe(true);
+    expect(r.values).toEqual([1, 2, 3, 4]);
+  });
+
+  it('errors on a non-numeric value', async () => {
+    const r = await readNumericVector(csvFile('ref.csv', '0.1\nfoo\n0.3'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/non-numeric/i);
+  });
+
+  it('errors on an empty file', async () => {
+    const r = await readNumericVector(txtFile('ref.txt', '   '));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/empty/i);
+  });
+
+  it('errors on a JSON object (not an array)', async () => {
+    const r = await readNumericVector(jsonFile('ref.json', '{"a":1}'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/array/i);
   });
 });

@@ -310,6 +310,71 @@ export async function readLogOddsRatios(file: File): Promise<LogOddsResult> {
   return { ok: errors.length === 0, map, errors, warnings };
 }
 
+// ---- numeric vector (reference risks) --------------------------------------
+
+export interface NumericVectorResult {
+  ok: boolean;
+  values: number[];
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Read a file of numbers into a `number[]`. Unlike the tabular slots (whose raw Blob is what reaches
+ * the SDK), the reference-risk arrays are typed as `number[]` in the SDK options, so they must be
+ * parsed client-side. Accepts a JSON array, a one-column CSV (a leading header token is tolerated),
+ * or whitespace/comma/newline-separated numbers. Any non-numeric token is a blocking error.
+ */
+export async function readNumericVector(file: File): Promise<NumericVectorResult> {
+  const raw = (await file.text()).trim();
+  const warnings: string[] = [];
+  if (raw === '') {
+    return { ok: false, values: [], errors: ['File is empty.'], warnings };
+  }
+
+  let tokens: string[];
+  if (raw[0] === '[' || raw[0] === '{') {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { ok: false, values: [], errors: [`Invalid JSON: ${msg}`], warnings };
+    }
+    if (!Array.isArray(parsed)) {
+      return { ok: false, values: [], errors: ['Expected a JSON array of numbers.'], warnings };
+    }
+    tokens = parsed.map((v) => String(v));
+  } else {
+    tokens = raw.split(/[\s,]+/).filter((t) => t !== '');
+    // Tolerate a single non-numeric header token (e.g. a column name) at the start.
+    if (tokens.length > 1 && !isFiniteNumeric(tokens[0]) && tokens.slice(1).every(isFiniteNumeric)) {
+      warnings.push(`Ignoring header token \`${tokens[0]}\`.`);
+      tokens = tokens.slice(1);
+    }
+  }
+
+  const values: number[] = [];
+  const bad: string[] = [];
+  for (const t of tokens) {
+    if (isFiniteNumeric(t)) values.push(Number(t));
+    else bad.push(t);
+  }
+
+  const errors: string[] = [];
+  if (bad.length) {
+    errors.push(
+      `Expected only numbers — found non-numeric value(s): ${bad.slice(0, 5).join(', ')}${
+        bad.length > 5 ? ', …' : ''
+      }.`,
+    );
+  } else if (values.length === 0) {
+    errors.push('No numeric values found.');
+  }
+
+  return { ok: errors.length === 0, values, errors, warnings };
+}
+
 // ---- uniform slot adapter --------------------------------------------------
 //
 // The input builder stores one uniform preview/validation shape per file slot, regardless of
