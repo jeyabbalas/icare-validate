@@ -391,21 +391,22 @@ function ModeBPanel() {
       <h3 style={cardTitle}>Pre-computed risks</h3>
       <StudySlot />
       <p style={{ fontSize: 12, color: 'var(--app-muted)', marginTop: 0 }}>
-        Your study data must contain <strong>both</strong> a predicted-risk column and a
-        linear-predictor column — the linear predictor drives risk-score ranking and category
-        calibration, so both are required.
+        Your study data must contain <strong>both</strong> a predicted-risk column named{' '}
+        <code>risk_estimates</code> and a linear-predictor column named{' '}
+        <code>linear_predictors</code>. py-icare 1.3.0 requires these exact names (its statistics
+        hard-code them); the linear predictor also drives risk-score ranking and category calibration.
       </p>
       <TextField
         label="Predicted-risk column"
         value={predictedRisk}
         onChange={(v) => setConfig({ predictedRiskVariableName: v })}
-        placeholder="e.g. predicted_risk"
+        placeholder="risk_estimates"
       />
       <TextField
         label="Linear-predictor column"
         value={linearPredictor}
         onChange={(v) => setConfig({ linearPredictorVariableName: v })}
-        placeholder="e.g. linear_predictor"
+        placeholder="linear_predictors"
       />
 
       <FileDropSlot

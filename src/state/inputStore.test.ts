@@ -71,7 +71,7 @@ describe('input readiness selectors', () => {
   const studyWithColumns = (): FileSlot => ({
     ...validSlot(),
     parse: {
-      headers: ['id', 'predicted_risk', 'linear_predictor'],
+      headers: ['id', 'risk_estimates', 'linear_predictors'],
       nRows: 1,
       errors: [],
       warnings: [],
@@ -83,9 +83,9 @@ describe('input readiness selectors', () => {
     store.setMode('B');
     store.setStudy(studyWithColumns());
     expect(selectIsReadyToRun(useInputStore.getState())).toBe(false); // no columns yet
-    useInputStore.getState().setConfig({ predictedRiskVariableName: 'predicted_risk' });
+    useInputStore.getState().setConfig({ predictedRiskVariableName: 'risk_estimates' });
     expect(selectIsReadyToRun(useInputStore.getState())).toBe(false); // only one column
-    useInputStore.getState().setConfig({ linearPredictorVariableName: 'linear_predictor' });
+    useInputStore.getState().setConfig({ linearPredictorVariableName: 'linear_predictors' });
     expect(selectIsReadyToRun(useInputStore.getState())).toBe(true); // both present
   });
 
@@ -94,7 +94,7 @@ describe('input readiness selectors', () => {
     store.setMode('B');
     store.setStudy(studyWithColumns());
     store.setConfig({
-      predictedRiskVariableName: 'predicted_risk',
+      predictedRiskVariableName: 'risk_estimates',
       linearPredictorVariableName: 'nope',
     });
     const summary = selectValidationSummary(useInputStore.getState());
@@ -107,8 +107,8 @@ describe('input readiness selectors', () => {
     store.setMode('B');
     store.setStudy(studyWithColumns());
     store.setConfig({
-      predictedRiskVariableName: 'predicted_risk',
-      linearPredictorVariableName: 'linear_predictor',
+      predictedRiskVariableName: 'risk_estimates',
+      linearPredictorVariableName: 'linear_predictors',
     });
     store.setModelFile('modelDiseaseIncidenceRates', validSlot());
     const summary = selectValidationSummary(useInputStore.getState());
@@ -210,19 +210,19 @@ describe('cross-file consistency checks', () => {
     store.setMode('B');
     store.setStudy(
       slotWith({
-        headers: ['predicted_risk', 'linear_predictor'],
+        headers: ['risk_estimates', 'linear_predictors'],
         nRows: 3,
         stats: {
           columns: {
-            predicted_risk: { numeric: 3, missing: 0, total: 3, min: -0.1, max: 1.4 },
-            linear_predictor: { numeric: 3, missing: 0, total: 3, min: -2, max: 2 },
+            risk_estimates: { numeric: 3, missing: 0, total: 3, min: -0.1, max: 1.4 },
+            linear_predictors: { numeric: 3, missing: 0, total: 3, min: -2, max: 2 },
           },
         },
       }),
     );
     store.setConfig({
-      predictedRiskVariableName: 'predicted_risk',
-      linearPredictorVariableName: 'linear_predictor',
+      predictedRiskVariableName: 'risk_estimates',
+      linearPredictorVariableName: 'linear_predictors',
     });
     const summary = selectValidationSummary(useInputStore.getState());
     const item = summary.items.find((i) => i.key === 'predictedRiskColumn');

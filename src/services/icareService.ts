@@ -6,6 +6,7 @@ import { loadICARE } from 'wasm-icare';
 import icareWorkerUrl from 'wasm-icare/worker?worker&url';
 
 import { PYICARE_WHEEL_FILENAME } from '../lib/icareTypes';
+import { mapIcareError } from './mapIcareError';
 import type {
   ICARE,
   LoadICAREOptions,
@@ -77,7 +78,7 @@ export function ensureLoaded(): Promise<ICARE> {
     .catch((err: unknown) => {
       icarePromise = null; // allow a retry after failure
       instance = null;
-      const message = mapError(err);
+      const message = mapIcareError(err);
       emit({ status: 'error', error: message });
       throw new Error(message, { cause: err });
     });
@@ -96,7 +97,7 @@ export async function validate(
   try {
     return await icare.validateAbsoluteRiskModel(options);
   } catch (err) {
-    throw new Error(mapError(err), { cause: err });
+    throw new Error(mapIcareError(err), { cause: err });
   }
 }
 
@@ -115,28 +116,6 @@ export async function dispose(): Promise<void> {
   }
 }
 
-/** Map known SDK error strings to friendly messages; fall back to the raw text. */
-export function mapError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
-
-  if (/is not implemented yet/i.test(raw)) {
-    return 'Internal build error: a non-browser iCARE build was loaded. Vite is not resolving the wasm-icare "browser" export condition.';
-  }
-  if (/offline browser boot requires an explicit indexURL/i.test(raw)) {
-    return 'Runtime assets missing (no Pyodide indexURL). Run "npm run vendor" to populate public/pyodide, then reload.';
-  }
-  if (/offline browser boot requires an explicit.*pyicareWheelUrl/i.test(raw)) {
-    return 'Runtime assets missing (no pyicare wheel). Run "npm run vendor" to populate public/pyodide, then reload.';
-  }
-  if (/ICARE engine is closed/i.test(raw)) {
-    return 'The iCARE engine was closed. Reload the page to start a new session.';
-  }
-  if (/failed to fetch '.+':\s*\d+/i.test(raw)) {
-    return `A required runtime asset could not be loaded (offline cache miss or a missing vendored file). ${raw}`;
-  }
-  if (/browser cannot read/i.test(raw)) {
-    return 'File paths are not supported in the browser. Provide each input as a URL or an uploaded file.';
-  }
-
-  return raw || 'Unknown error while running the iCARE engine.';
-}
+// `mapError` moved to ./mapIcareError (pure, worker-import-free) so it can be unit-tested without booting
+// the SDK. Re-exported under the original name for call-site continuity.
+export { mapIcareError as mapError } from './mapIcareError';

@@ -517,26 +517,49 @@ export function selectValidationSummary(s: InputState): ValidationSummary {
     // when predicted_risk AND linear_predictor are both there — supplying one alone silently falls
     // back to rebuilding the model. When the study headers are known, verify the named column exists.
     const studyHeaders = s.study.parse?.headers;
-    const columnItem = (key: string, label: string, value: string): ValidationSummaryItem => {
+    const columnItem = (
+      key: string,
+      label: string,
+      value: string,
+      canonical: string,
+    ): ValidationSummaryItem => {
       const name = value.trim();
       const errors: string[] = [];
       let status: ValidationSummaryItem['status'];
       if (name === '') {
         status = 'missing';
-        errors.push(`Enter the ${label.toLowerCase()} present in the study data.`);
+        errors.push(`Enter the ${label.toLowerCase()} — it must be named \`${canonical}\`.`);
+      } else if (name !== canonical) {
+        // py-icare 1.3.0 hard-codes `risk_estimates` / `linear_predictors` in its downstream stats (E/O
+        // ratio, Brier score, calibration, categorization); a differently-named column runs AUC and then
+        // crashes with a KeyError. So Mode B requires the precomputed columns to carry these exact names.
+        status = 'invalid';
+        errors.push(
+          `py-icare requires this column to be named \`${canonical}\` — rename it in your study CSV.`,
+        );
       } else if (studyHeaders && studyHeaders.length > 0 && !studyHeaders.includes(name)) {
         status = 'invalid';
-        errors.push(`Column \`${name}\` was not found in the study data headers.`);
+        errors.push(`Column \`${canonical}\` was not found in the study data headers.`);
       } else {
         status = 'valid';
       }
       return { key, label, required: true, status, errors, warnings: [] };
     };
     items.push(
-      columnItem('predictedRiskColumn', 'Predicted-risk column', s.predictedRiskVariableName),
+      columnItem(
+        'predictedRiskColumn',
+        'Predicted-risk column',
+        s.predictedRiskVariableName,
+        'risk_estimates',
+      ),
     );
     items.push(
-      columnItem('linearPredictorColumn', 'Linear-predictor column', s.linearPredictorVariableName),
+      columnItem(
+        'linearPredictorColumn',
+        'Linear-predictor column',
+        s.linearPredictorVariableName,
+        'linear_predictors',
+      ),
     );
 
     // Optional: population disease-incidence rates add the cohort-vs-population incidence comparison.
