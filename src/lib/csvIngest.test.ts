@@ -98,6 +98,27 @@ describe('validateStudyData', () => {
     expect(r.ok).toBe(true);
     expect(r.warnings.join(' ')).toMatch(/below/);
   });
+
+  it('computes study stats: age span, case count, and per-column summaries', async () => {
+    const r = await validateStudyData(csvFile('study.csv', goodStudy));
+    const st = r.meta.stats;
+    expect(st?.nCases).toBe(1); // one row has observed_outcome = 1
+    expect(st?.ageMin).toBe(51); // min study_entry_age
+    expect(st?.ageMax).toBe(67); // max study_exit_age
+    expect(st?.columns?.study_entry_age.min).toBe(51);
+    expect(st?.columns?.study_entry_age.max).toBe(56);
+  });
+
+  it('warns on non-positive sampling weights', async () => {
+    const body = [
+      'study_entry_age,study_exit_age,observed_outcome,sampling_weights,time_of_onset',
+      '56,67,0,0,Inf',
+      '51,57,1,1,55',
+    ].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.meta.badges).toEqual(['ncc']);
+    expect(r.warnings.join(' ')).toMatch(/sampling_weights.*positive/i);
+  });
 });
 
 describe('validateRatesTable', () => {
@@ -117,6 +138,11 @@ describe('validateRatesTable', () => {
     const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n0,-1'));
     expect(r.ok).toBe(false);
     expect(r.errors.join(' ')).toMatch(/rate/);
+  });
+
+  it('records the sorted set of ages present (rateAges)', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n2,0.1\n0,0.2\n1,0.3'));
+    expect(r.meta.stats?.rateAges).toEqual([0, 1, 2]);
   });
 });
 

@@ -342,6 +342,159 @@ function riskIntervalItem(s: InputState): ValidationSummaryItem | null {
   };
 }
 
+// ---- Cross-file consistency (maximal advisory checks) ----------------------
+
+/** Integer ages in [min, max) — py-icare's `check_rate_covers_all_ages` span — absent from `present`. */
+function missingAges(min: number, max: number, present: number[]): number[] {
+  const set = new Set(present);
+  const missing: number[] = [];
+  for (let a = Math.ceil(min); a < Math.ceil(max); a += 1) {
+    if (!set.has(a)) missing.push(a);
+  }
+  return missing;
+}
+
+function formatAgeList(ages: number[], limit = 8): string {
+  if (ages.length <= limit) return ages.join(', ');
+  return `${ages.slice(0, limit).join(', ')}, … (+${ages.length - limit} more)`;
+}
+
+/**
+ * A summary line for the optional reference population. py-icare silently ignores a lone reference
+ * entry/exit age (or a lone reference array), so this flags a half-specified pair. Returns `null`
+ * when nothing is specified or the pair is consistent.
+ */
+function referencePopulationItem(s: InputState): ValidationSummaryItem | null {
+  const warnings: string[] = [];
+  if (s.mode === 'A') {
+    const e = s.referenceEntryAge;
+    const x = s.referenceExitAge;
+    if (e == null && x == null) return null;
+    if ((e == null) !== (x == null)) {
+      warnings.push(
+        'Provide both reference entry and exit ages, or neither — a lone value is ignored.',
+      );
+    } else {
+      const flat = (v: AgeSpecValue): number[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
+      const es = flat(e);
+      const xs = flat(x);
+      if ([...es, ...xs].some((n) => !Number.isInteger(n))) {
+        warnings.push('Reference ages should be whole numbers.');
+      }
+      if (Array.isArray(e) && Array.isArray(x) && e.length !== x.length) {
+        warnings.push(
+          `Reference entry/exit age lists differ in length (${e.length} vs ${x.length}).`,
+        );
+      }
+      if (es.length === 1 && xs.length === 1 && xs[0] <= es[0]) {
+        warnings.push('Reference exit age should exceed entry age.');
+      }
+    }
+  } else {
+    const p = s.referencePredictedRisks.values ?? [];
+    const l = s.referenceLinearPredictors.values ?? [];
+    if (p.length === 0 && l.length === 0) return null;
+    if ((p.length > 0) !== (l.length > 0)) {
+      warnings.push('Provide both reference predicted-risk and linear-predictor arrays, or neither.');
+    } else if (p.length !== l.length) {
+      warnings.push(`Reference arrays differ in length (${p.length} vs ${l.length}).`);
+    }
+  }
+  if (warnings.length === 0) return null;
+  return {
+    key: 'referencePopulation',
+    label: 'Reference population',
+    required: false,
+    status: 'valid',
+    errors: [],
+    warnings,
+  };
+}
+
+/** Append cross-file advisory warnings onto the summary items that already exist. */
+function applyCrossFileChecks(items: ValidationSummaryItem[], s: InputState): void {
+  const byKey = new Map(items.map((it) => [it.key, it]));
+  const studyStats = s.study.parse?.stats;
+  const studyRows = s.study.parse?.nRows;
+
+  // Per-subject profiles must align 1:1 with the study rows.
+  for (const key of ['applyCovariateProfile', 'applySnpProfile'] as ModelFileKey[]) {
+    const item = byKey.get(key);
+    const rows = s.modelFiles[key].parse?.nRows;
+    if (item && studyRows != null && rows != null && rows !== studyRows) {
+      item.warnings.push(
+        `Has ${rows} row(s) but the study has ${studyRows} — a profile should have one row per study subject.`,
+      );
+    }
+  }
+
+  // Incidence-rate tables must cover every integer age across the study span.
+  if (studyStats?.ageMin != null && studyStats.ageMax != null) {
+    const rateKeys: ModelFileKey[] = ['modelDiseaseIncidenceRates', 'modelCompetingIncidenceRates'];
+    for (const key of rateKeys) {
+      const item = byKey.get(key);
+      const rateAges = s.modelFiles[key].parse?.stats?.rateAges;
+      if (!item || !rateAges || rateAges.length === 0) continue;
+      const missing = missingAges(studyStats.ageMin, studyStats.ageMax, rateAges);
+      if (missing.length) {
+        item.warnings.push(
+          `Does not cover every study age ${studyStats.ageMin}–${studyStats.ageMax}: missing ${formatAgeList(missing)}.`,
+        );
+      }
+    }
+  }
+
+  // Mode B: precomputed columns should be numeric; the predicted risk is a probability in [0, 1].
+  if (s.mode === 'B' && studyStats?.columns) {
+    const pr = studyStats.columns[s.predictedRiskVariableName.trim()];
+    const prItem = byKey.get('predictedRiskColumn');
+    if (pr && prItem) {
+      const nonNumeric = pr.total - pr.numeric;
+      if (nonNumeric > 0) prItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
+      if (pr.min != null && pr.max != null && (pr.min < 0 || pr.max > 1)) {
+        prItem.warnings.push(
+          `Predicted absolute risks should lie in [0, 1] (found ${pr.min} to ${pr.max}).`,
+        );
+      }
+    }
+    const lp = studyStats.columns[s.linearPredictorVariableName.trim()];
+    const lpItem = byKey.get('linearPredictorColumn');
+    if (lp && lpItem) {
+      const nonNumeric = lp.total - lp.numeric;
+      if (nonNumeric > 0) lpItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
+    }
+  }
+
+  // Mode A: named weights / family-history columns should exist in the relevant tables.
+  if (s.mode === 'A') {
+    const refItem = byKey.get('modelReferenceDataset');
+    const refHeaders = s.modelFiles.modelReferenceDataset.parse?.headers ?? [];
+    const covItem = byKey.get('applyCovariateProfile');
+    const covHeaders = s.modelFiles.applyCovariateProfile.parse?.headers ?? [];
+
+    const weightsName = s.modelReferenceDatasetWeightsVariableName.trim();
+    if (weightsName && refItem && refHeaders.length > 0 && !refHeaders.includes(weightsName)) {
+      refItem.warnings.push(
+        `Weights column \`${weightsName}\` was not found in the reference dataset.`,
+      );
+    }
+
+    const fhName = s.modelFamilyHistoryVariableName.trim();
+    if (fhName) {
+      if (covItem && covHeaders.length > 0 && !covHeaders.includes(fhName)) {
+        covItem.warnings.push(
+          `Family-history column \`${fhName}\` was not found in the covariate profile.`,
+        );
+      }
+      if (refItem && refHeaders.length > 0 && !refHeaders.includes(fhName)) {
+        refItem.warnings.push(
+          `Family-history column \`${fhName}\` was not found in the reference dataset.`,
+        );
+      }
+    }
+  }
+}
+
 /** Build the readiness summary that drives the InputSummaryPanel. */
 export function selectValidationSummary(s: InputState): ValidationSummary {
   const items: ValidationSummaryItem[] = [];
@@ -394,6 +547,13 @@ export function selectValidationSummary(s: InputState): ValidationSummary {
 
   const riskItem = riskIntervalItem(s);
   if (riskItem) items.push(riskItem);
+
+  const refItem = referencePopulationItem(s);
+  if (refItem) items.push(refItem);
+
+  // Advisory cross-file warnings (row parity, age coverage, value ranges, named columns). These
+  // never change an item's status, so they inform without blocking `ready`.
+  applyCrossFileChecks(items, s);
 
   const isNcc = Boolean(s.study.parse?.badges?.includes('ncc'));
 

@@ -70,8 +70,13 @@ export function InputSummaryPanel() {
               )}
             </div>
             {it.errors.map((msg, i) => (
-              <div key={i} style={{ marginLeft: 22, fontSize: 12, color: 'var(--app-danger)' }}>
+              <div key={`e${i}`} style={{ marginLeft: 22, fontSize: 12, color: 'var(--app-danger)' }}>
                 {msg}
+              </div>
+            ))}
+            {it.warnings.map((msg, i) => (
+              <div key={`w${i}`} style={{ marginLeft: 22, fontSize: 12, color: 'var(--app-muted)' }}>
+                ⚠ {msg}
               </div>
             ))}
           </li>

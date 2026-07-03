@@ -12,6 +12,28 @@
 
 import { csvParse, tsvParse, type DSVRowArray } from 'd3-dsv';
 
+/** Per-column numeric summary, gathered in a single pass, for cross-file / value-range checks. */
+export interface ColumnNumericSummary {
+  numeric: number; // cells that parse to a finite number
+  missing: number; // empty cells
+  total: number;
+  min: number | null;
+  max: number | null;
+}
+
+/**
+ * Lightweight numeric summaries carried on a slot's parse metadata so cross-file checks (rate age
+ * coverage, profile row parity, Mode-B risk range) need no second file read. UI-only, never sent to
+ * the SDK.
+ */
+export interface ParseStats {
+  columns?: Record<string, ColumnNumericSummary>; // study: per-column summary
+  nCases?: number; // study: Σ observed_outcome
+  ageMin?: number; // study: min(study_entry_age)
+  ageMax?: number; // study: max(study_exit_age)
+  rateAges?: number[]; // rates: sorted unique ages present
+}
+
 /** Uniform result for the tabular validators. `ok === (errors.length === 0)`. */
 export interface IngestResult {
   ok: boolean;
@@ -21,6 +43,7 @@ export interface IngestResult {
     headers: string[];
     nRows: number;
     badges?: string[];
+    stats?: ParseStats;
   };
 }
 
@@ -106,6 +129,42 @@ function isTimeOfOnset(v: string | undefined): boolean {
 }
 
 /**
+ * Numeric summaries for the study table (single pass): per-column min/max/missing/numeric counts, the
+ * case count (Σ observed_outcome), and the age span (min entry age → max exit age). These feed the
+ * cross-file rate-coverage check and the Mode-B predicted-risk range check without a second read.
+ */
+function computeStudyStats(table: ParsedTable): ParseStats {
+  const columns: Record<string, ColumnNumericSummary> = {};
+  for (const h of table.headers) {
+    columns[h] = { numeric: 0, missing: 0, total: table.rows.length, min: null, max: null };
+  }
+  let nCases = 0;
+  for (const row of table.rows) {
+    for (const h of table.headers) {
+      const s = row[h]?.trim() ?? '';
+      const col = columns[h];
+      if (s === '') {
+        col.missing += 1;
+        continue;
+      }
+      const n = Number(s);
+      if (Number.isFinite(n)) {
+        col.numeric += 1;
+        col.min = col.min == null ? n : Math.min(col.min, n);
+        col.max = col.max == null ? n : Math.max(col.max, n);
+      }
+    }
+    if (row.observed_outcome?.trim() === '1') nCases += 1;
+  }
+  return {
+    columns,
+    nCases,
+    ageMin: columns['study_entry_age']?.min ?? undefined,
+    ageMax: columns['study_exit_age']?.max ?? undefined,
+  };
+}
+
+/**
  * Validate the top-level study/outcome table. Detects nested case-control designs via a
  * `sampling_weights` column and tags the result with an `'ncc'` badge.
  */
@@ -188,8 +247,20 @@ export async function validateStudyData(file: File): Promise<IngestResult> {
     result.warnings.push(
       'Nested case-control design detected (`sampling_weights` present) — inverse-probability weighting will be applied.',
     );
+    // py-icare computes frequency = 1 / sampling_weights, so weights must be positive and finite.
+    const badWeights: number[] = [];
+    table.rows.forEach((row, i) => {
+      const w = Number(row.sampling_weights);
+      if (!isFiniteNumeric(row.sampling_weights) || w <= 0) badWeights.push(i);
+    });
+    if (badWeights.length) {
+      result.warnings.push(
+        `\`sampling_weights\` should be a positive number — ${badWeights.length} row(s) are not (e.g. row ${sampleRows(badWeights)}).`,
+      );
+    }
   }
 
+  result.meta.stats = computeStudyStats(table);
   return finalize(result);
 }
 
@@ -229,6 +300,10 @@ export async function validateRatesTable(file: File): Promise<IngestResult> {
       `\`rate\` must be a non-negative number — ${badRate.length} bad row(s) (e.g. row ${sampleRows(badRate)}).`,
     );
   }
+
+  // The sorted set of ages present, for the cross-file age-coverage check.
+  const ages = table.rows.map((r) => Number(r.age)).filter((n) => Number.isFinite(n));
+  result.meta.stats = { rateAges: Array.from(new Set(ages)).sort((a, b) => a - b) };
 
   return finalize(result);
 }
@@ -426,6 +501,8 @@ export interface ParseMeta {
   badges?: string[];
   /** Short human summary for non-tabular inputs (formula excerpt, coefficient count). */
   preview?: string;
+  /** Numeric summaries (study: per-column + age span; rates: ages present) for cross-file checks. */
+  stats?: ParseStats;
 }
 
 function excerpt(text: string, max = 140): string {
@@ -475,5 +552,6 @@ function toMeta(r: IngestResult): ParseMeta {
     errors: r.errors,
     warnings: r.warnings,
     badges: r.meta.badges,
+    stats: r.meta.stats,
   };
 }

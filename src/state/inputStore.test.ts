@@ -7,6 +7,17 @@ import {
   MODE_A_REQUIRED,
   type FileSlot,
 } from './inputStore';
+import type { ParseMeta, ParseStats } from '../lib/csvIngest';
+
+/** A filled slot whose parse metadata can be tuned per test (headers, nRows, stats). */
+const slotWith = (parse: Partial<ParseMeta>): FileSlot => ({
+  file: new File(['x'], 'f.csv'),
+  url: null,
+  source: 'upload',
+  filename: 'f.csv',
+  size: 1,
+  parse: { headers: ['a'], nRows: 1, errors: [], warnings: [], ...parse },
+});
 
 const validSlot = (badges?: string[]): FileSlot => ({
   file: new File(['x'], 'f.csv'),
@@ -136,5 +147,88 @@ describe('input readiness selectors', () => {
     useInputStore.getState().setStudy(validSlot());
     useInputStore.getState().reset();
     expect(useInputStore.getState().study).toEqual(emptySlot());
+  });
+});
+
+describe('cross-file consistency checks', () => {
+  beforeEach(() => useInputStore.getState().reset());
+
+  function fillModeAWithStudy(studyRows: number, studyStats?: Partial<ParseStats>) {
+    const store = useInputStore.getState();
+    store.setStudy(
+      slotWith({
+        headers: ['id'],
+        nRows: studyRows,
+        stats: { ageMin: 50, ageMax: 80, nCases: 10, columns: {}, ...studyStats },
+      }),
+    );
+    for (const key of MODE_A_REQUIRED) store.setModelFile(key, slotWith({ nRows: studyRows }));
+  }
+
+  it('warns (does not block) when a covariate profile row count differs from the study', () => {
+    fillModeAWithStudy(100);
+    useInputStore.getState().setModelFile('applyCovariateProfile', slotWith({ nRows: 90 }));
+    const summary = selectValidationSummary(useInputStore.getState());
+    const item = summary.items.find((i) => i.key === 'applyCovariateProfile');
+    expect(item?.warnings.join(' ')).toMatch(/90 row.*100/);
+    expect(summary.ready).toBe(true); // advisory only
+  });
+
+  it('warns when incidence rates do not cover the study age span', () => {
+    fillModeAWithStudy(100, { ageMin: 40, ageMax: 60 });
+    useInputStore
+      .getState()
+      .setModelFile(
+        'modelDiseaseIncidenceRates',
+        slotWith({ nRows: 100, stats: { rateAges: [50, 51, 52, 53, 54, 55, 56, 57, 58, 59] } }),
+      );
+    const summary = selectValidationSummary(useInputStore.getState());
+    const item = summary.items.find((i) => i.key === 'modelDiseaseIncidenceRates');
+    expect(item?.warnings.join(' ')).toMatch(/does not cover/i);
+  });
+
+  it('warns on a half-specified reference age pair (Mode A)', () => {
+    fillModeAWithStudy(100);
+    useInputStore.getState().setConfig({ referenceEntryAge: 50 });
+    const summary = selectValidationSummary(useInputStore.getState());
+    const item = summary.items.find((i) => i.key === 'referencePopulation');
+    expect(item?.warnings.join(' ')).toMatch(/both reference entry and exit/i);
+    expect(summary.ready).toBe(true); // reference population is optional
+  });
+
+  it('warns when a Mode-B predicted-risk column falls outside [0, 1]', () => {
+    const store = useInputStore.getState();
+    store.setMode('B');
+    store.setStudy(
+      slotWith({
+        headers: ['predicted_risk', 'linear_predictor'],
+        nRows: 3,
+        stats: {
+          columns: {
+            predicted_risk: { numeric: 3, missing: 0, total: 3, min: -0.1, max: 1.4 },
+            linear_predictor: { numeric: 3, missing: 0, total: 3, min: -2, max: 2 },
+          },
+        },
+      }),
+    );
+    store.setConfig({
+      predictedRiskVariableName: 'predicted_risk',
+      linearPredictorVariableName: 'linear_predictor',
+    });
+    const summary = selectValidationSummary(useInputStore.getState());
+    const item = summary.items.find((i) => i.key === 'predictedRiskColumn');
+    expect(item?.warnings.join(' ')).toMatch(/\[0, 1\]/);
+  });
+
+  it('warns when a named family-history column is absent from the profile/reference', () => {
+    fillModeAWithStudy(100);
+    useInputStore
+      .getState()
+      .setModelFile('applyCovariateProfile', slotWith({ headers: ['id', 'bmi'], nRows: 100 }));
+    useInputStore.getState().setModelFile('modelReferenceDataset', slotWith({ headers: ['bmi'] }));
+    useInputStore.getState().setConfig({ modelFamilyHistoryVariableName: 'family_history' });
+    const summary = selectValidationSummary(useInputStore.getState());
+    const cov = summary.items.find((i) => i.key === 'applyCovariateProfile');
+    expect(cov?.warnings.join(' ')).toMatch(/family-history column.*not found/i);
   });
 });
