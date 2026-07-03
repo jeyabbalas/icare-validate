@@ -151,6 +151,46 @@ describe('validateRatesTable', () => {
     expect(r.ok).toBe(true); // blank rates are not a blocking error
     expect(r.meta.stats?.rateAges).toEqual([50]); // ages 85, 86 have no rate → not covered
   });
+
+  it('accepts a start_age,end_age,rate band table and expands coverage per year', async () => {
+    const r = await validateRatesTable(
+      csvFile('bands.csv', 'start_age,end_age,rate\n0,40,0.001\n40,50,0.02'),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.meta.badges).toContain('age bands');
+    // Half-open [0,40) ∪ [40,50) ⇒ ages 0..49; ageMin = first start, ageMax = last (inclusive) end.
+    expect(r.meta.stats?.rateAges?.length).toBe(50);
+    expect(r.meta.stats?.rateAges?.[0]).toBe(0);
+    expect(r.meta.stats?.rateAges?.at(-1)).toBe(49);
+    expect(r.meta.stats?.ageMin).toBe(0);
+    expect(r.meta.stats?.ageMax).toBe(50);
+  });
+
+  it('errors on non-integer band ages', async () => {
+    const r = await validateRatesTable(csvFile('bands.csv', 'start_age,end_age,rate\n0,40.5,0.001'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/integer/);
+  });
+
+  it('errors on non-contiguous bands (a gap)', async () => {
+    const r = await validateRatesTable(
+      csvFile('bands.csv', 'start_age,end_age,rate\n0,40,0.001\n45,50,0.02'),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/contiguous/);
+  });
+
+  it('errors on a band rate outside [0, 1]', async () => {
+    const r = await validateRatesTable(csvFile('bands.csv', 'start_age,end_age,rate\n0,40,1.5'));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/rate/);
+  });
+
+  it('warns (does not block) when a per-age rate exceeds 1', async () => {
+    const r = await validateRatesTable(csvFile('rates.csv', 'age,rate\n40,2'));
+    expect(r.ok).toBe(true);
+    expect(r.warnings.join(' ')).toMatch(/exceed/);
+  });
 });
 
 describe('structural validators', () => {

@@ -29,9 +29,9 @@ export interface ColumnNumericSummary {
 export interface ParseStats {
   columns?: Record<string, ColumnNumericSummary>; // study: per-column summary
   nCases?: number; // study: Σ observed_outcome
-  ageMin?: number; // study: min(study_entry_age)
-  ageMax?: number; // study: max(study_exit_age)
-  rateAges?: number[]; // rates: sorted unique ages present
+  ageMin?: number; // study: min(study_entry_age); rates: min plotted age
+  ageMax?: number; // study: max(study_exit_age); rates: max plotted age
+  rateAges?: number[]; // rates: sorted unique ages with a present rate (bands expanded per-year)
 }
 
 /** Uniform result for the tabular validators. `ok === (errors.length === 0)`. */
@@ -264,26 +264,45 @@ export async function validateStudyData(file: File): Promise<IngestResult> {
   return finalize(result);
 }
 
-// ---- age,rate tables (disease / competing incidence) -----------------------
+// ---- incidence-rate tables (disease / competing) ---------------------------
 
-/** Validate an `age,rate` incidence table (disease or competing). */
+/**
+ * Validate an incidence-rate table (disease or competing). py-icare accepts two layouts, so we detect
+ * by header and dispatch:
+ *   • `age,rate` — one hazard per integer age.
+ *   • `start_age,end_age,rate` — half-open age bands `[start_age, end_age)`. py-icare's `format_rates`
+ *     expands each band to per-year by DIVIDING the rate across the years it spans.
+ */
 export async function validateRatesTable(file: File): Promise<IngestResult> {
   const table = await readDelimited(file);
   const result = baseResult(table);
   if (!requireNonEmpty(table, result)) return finalize(result);
 
   const headers = new Set(table.headers);
-  for (const col of ['age', 'rate'] as const) {
-    if (!headers.has(col)) result.errors.push(`Missing required column \`${col}\`.`);
-  }
+  const isBand = headers.has('start_age') && headers.has('end_age') && headers.has('rate');
+  const isPoint = headers.has('age') && headers.has('rate');
+
+  if (isBand) return validateRatesBand(table, result);
+  if (isPoint) return validateRatesPoint(table, result);
+
+  // Neither schema — name both. Keep the word `rate` in the message (a required column in each, and
+  // what existing callers/tests key on).
+  result.errors.push(
+    'Rate table must have columns `age`, `rate` (per single age) or `start_age`, `end_age`, `rate` (age bands).',
+  );
+  return finalize(result);
+}
+
+/** `age,rate`: one hazard per integer age; a blank rate is a tolerated gap, not an error. */
+function validateRatesPoint(table: ParsedTable, result: IngestResult): IngestResult {
   const extra = table.headers.filter((h) => h !== 'age' && h !== 'rate');
   if (extra.length) {
     result.warnings.push(`Unexpected extra column(s) will be ignored: ${extra.join(', ')}.`);
   }
-  if (result.errors.length) return finalize(result);
 
   const badAge: number[] = [];
   const badRate: number[] = [];
+  const gtOne: number[] = [];
   const coveredAges: number[] = [];
   table.rows.forEach((row, i) => {
     const ageOk = isFiniteNumeric(row.age) && Number(row.age) >= 0;
@@ -292,8 +311,12 @@ export async function validateRatesTable(file: File): Promise<IngestResult> {
     // requires coverage *across* that span, checked cross-file). A present rate must be non-negative.
     const rateStr = row.rate?.trim() ?? '';
     if (rateStr === '') return;
-    if (!isFiniteNumeric(rateStr) || Number(rateStr) < 0) badRate.push(i);
-    else if (ageOk) coveredAges.push(Number(row.age));
+    if (!isFiniteNumeric(rateStr) || Number(rateStr) < 0) {
+      badRate.push(i);
+    } else {
+      if (Number(rateStr) > 1) gtOne.push(i); // py-icare treats rates as probabilities in [0, 1]
+      if (ageOk) coveredAges.push(Number(row.age));
+    }
   });
   if (badAge.length) {
     result.errors.push(
@@ -305,11 +328,90 @@ export async function validateRatesTable(file: File): Promise<IngestResult> {
       `\`rate\` must be a non-negative number where present — ${badRate.length} bad row(s) (e.g. row ${sampleRows(badRate)}).`,
     );
   }
+  if (gtOne.length) {
+    result.warnings.push(
+      `\`rate\` is a probability in [0, 1]; ${gtOne.length} row(s) exceed 1 (e.g. row ${sampleRows(gtOne)}).`,
+    );
+  }
 
   // Ages with a valid, present rate — the cross-file coverage check treats a blank-rate age as not
   // covered, matching py-icare's pd.isna handling.
-  result.meta.stats = { rateAges: Array.from(new Set(coveredAges)).sort((a, b) => a - b) };
+  const covered = Array.from(new Set(coveredAges)).sort((a, b) => a - b);
+  result.meta.stats = covered.length
+    ? { rateAges: covered, ageMin: covered[0], ageMax: covered[covered.length - 1] }
+    : { rateAges: covered };
+  return finalize(result);
+}
 
+/**
+ * `start_age,end_age,rate`: half-open age bands `[start_age, end_age)`. py-icare requires integer ages,
+ * a probability rate in [0, 1], and contiguous bands. We check contiguity per row (stricter than
+ * py-icare's summed check, which lets an offsetting gap+overlap slip through).
+ */
+function validateRatesBand(table: ParsedTable, result: IngestResult): IngestResult {
+  const extra = table.headers.filter(
+    (h) => h !== 'start_age' && h !== 'end_age' && h !== 'rate',
+  );
+  if (extra.length) {
+    result.warnings.push(`Unexpected extra column(s) will be ignored: ${extra.join(', ')}.`);
+  }
+
+  const badAge: number[] = []; // non-integer, negative, or end_age ≤ start_age
+  const badRate: number[] = []; // blank / non-numeric / outside [0, 1] (a band needs a present rate)
+  const bands: { start: number; end: number }[] = [];
+  table.rows.forEach((row, i) => {
+    const start = Number(row.start_age?.trim());
+    const end = Number(row.end_age?.trim());
+    const ageOk =
+      isFiniteNumeric(row.start_age) &&
+      isFiniteNumeric(row.end_age) &&
+      Number.isInteger(start) &&
+      Number.isInteger(end) &&
+      start >= 0 &&
+      end > start;
+    if (!ageOk) badAge.push(i);
+
+    const rateStr = row.rate?.trim() ?? '';
+    const rate = Number(rateStr);
+    const rateOk = isFiniteNumeric(rateStr) && rate >= 0 && rate <= 1;
+    if (!rateOk) badRate.push(i);
+
+    if (ageOk && rateOk) bands.push({ start, end });
+  });
+  if (badAge.length) {
+    result.errors.push(
+      `\`start_age\`/\`end_age\` must be integers with end_age > start_age — ${badAge.length} bad row(s) (e.g. row ${sampleRows(badAge)}).`,
+    );
+  }
+  if (badRate.length) {
+    result.errors.push(
+      `\`rate\` must be a probability in [0, 1] — ${badRate.length} bad row(s) (e.g. row ${sampleRows(badRate)}).`,
+    );
+  }
+  if (result.errors.length) return finalize(result);
+
+  // Contiguity: sorted by start_age, each band must begin exactly where the previous one ended.
+  const sorted = [...bands].sort((a, b) => a.start - b.start);
+  for (let k = 1; k < sorted.length; k++) {
+    if (sorted[k].start !== sorted[k - 1].end) {
+      result.errors.push(
+        `Age bands must be contiguous (no gaps or overlaps): a band starts at ${sorted[k].start} but the previous band ends at ${sorted[k - 1].end}.`,
+      );
+      break;
+    }
+  }
+  if (result.errors.length) return finalize(result);
+
+  // Expand each half-open [start, end) band to its covered integer ages (matching py-icare's per-year
+  // expansion) so cross-file coverage and the shared x-domain see the real span.
+  const covered = new Set<number>();
+  for (const b of sorted) for (let a = b.start; a < b.end; a++) covered.add(a);
+  const rateAges = Array.from(covered).sort((a, b) => a - b);
+
+  result.meta.badges = ['age bands'];
+  result.meta.stats = sorted.length
+    ? { rateAges, ageMin: sorted[0].start, ageMax: sorted[sorted.length - 1].end }
+    : { rateAges };
   return finalize(result);
 }
 

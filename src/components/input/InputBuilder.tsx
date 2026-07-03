@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { SlotKind } from '../../lib/csvIngest';
 import { EXAMPLE_IDS, EXAMPLE_LABELS } from '../../lib/examples';
 import { useInputStore, type InputMode, type ModelFileKey } from '../../state/inputStore';
@@ -6,6 +7,7 @@ import { DataPreviewSection } from './DataPreviewSection';
 import { FileDropSlot } from './FileDropSlot';
 import { InputSummaryPanel } from './InputSummaryPanel';
 import { ModelEquationSection } from './ModelEquationSection';
+import { RatesChartSection, type RateUnits } from './RatesChartSection';
 import { ReferencePopulationPanel } from './ReferencePopulationPanel';
 import { NumberField, NumericListField, RiskIntervalControl, TextField } from './fields';
 
@@ -19,6 +21,11 @@ const cardStyle: React.CSSProperties = {
 };
 
 const cardTitle: React.CSSProperties = { margin: '0 0 10px', fontSize: 14 };
+
+// Validated categorical hues (dataviz reference palette) for the two incidence charts — a
+// colorblind-safe blue/orange pair, each stepped for its theme's surface.
+const DISEASE_COLOR = { light: '#2a78d6', dark: '#3987e5' };
+const MORTALITY_COLOR = { light: '#eb6834', dark: '#d95926' };
 
 interface ModelFileSpec {
   key: ModelFileKey;
@@ -49,7 +56,7 @@ const MODE_A_PRIMARY: ModelFileSpec[] = [
     label: 'Disease incidence rates',
     kind: 'rates',
     accept: '.csv',
-    hint: 'CSV with columns: age, rate',
+    hint: 'CSV: age,rate — or start_age,end_age,rate (age bands)',
   },
   {
     key: 'modelCompetingIncidenceRates',
@@ -57,7 +64,7 @@ const MODE_A_PRIMARY: ModelFileSpec[] = [
     kind: 'rates',
     accept: '.csv',
     optional: true,
-    hint: 'CSV with columns: age, rate',
+    hint: 'CSV: age,rate — or start_age,end_age,rate (age bands)',
   },
 ];
 
@@ -81,6 +88,27 @@ const MODE_A_SNP: ModelFileSpec[] = [
 
 export function InputBuilder() {
   const mode = useInputStore((s) => s.mode);
+  // Shared across both incidence charts so toggling units on one updates the other.
+  const [rateUnits, setRateUnits] = useState<RateUnits>('per-year');
+
+  // Shared x-axis for the two incidence charts: the union of the loaded rate files' age ranges, so a
+  // reader can bounce between the plots without the axis shifting. Each file's [ageMin, ageMax] comes
+  // from its parse stats (age bands included, expanded per-year). Competing rates only chart in Mode A.
+  const diseaseStats = useInputStore((s) => s.modelFiles.modelDiseaseIncidenceRates.parse?.stats);
+  const competingStats = useInputStore(
+    (s) => s.modelFiles.modelCompetingIncidenceRates.parse?.stats,
+  );
+  const rateXDomain = useMemo<[number, number] | null>(() => {
+    const ranges: [number, number][] = [];
+    if (diseaseStats?.ageMin != null && diseaseStats.ageMax != null) {
+      ranges.push([diseaseStats.ageMin, diseaseStats.ageMax]);
+    }
+    if (mode === 'A' && competingStats?.ageMin != null && competingStats.ageMax != null) {
+      ranges.push([competingStats.ageMin, competingStats.ageMax]);
+    }
+    if (!ranges.length) return null;
+    return [Math.min(...ranges.map((r) => r[0])), Math.max(...ranges.map((r) => r[1]))];
+  }, [diseaseStats, competingStats, mode]);
 
   return (
     <div>
@@ -98,8 +126,28 @@ export function InputBuilder() {
         <div>{mode === 'A' ? <ModeAPanel /> : <ModeBPanel />}</div>
         <InputSummaryPanel />
       </div>
-      <ModelEquationSection />
       <DataPreviewSection />
+      <RatesChartSection
+        slotKey="modelDiseaseIncidenceRates"
+        title="Disease incidence rates"
+        caption="Baseline age-specific incidence of the disease — the hazard the relative-risk model scales by exp(Σβx) to obtain each subject's risk."
+        colorLight={DISEASE_COLOR.light}
+        colorDark={DISEASE_COLOR.dark}
+        units={rateUnits}
+        onUnitsChange={setRateUnits}
+        xDomain={rateXDomain}
+      />
+      <RatesChartSection
+        slotKey="modelCompetingIncidenceRates"
+        title="Competing incidence rates (all-cause mortality)"
+        caption="Age-specific all-cause mortality — the competing risk of dying from another cause before the disease occurs, which iCARE integrates to attenuate absolute risk."
+        colorLight={MORTALITY_COLOR.light}
+        colorDark={MORTALITY_COLOR.dark}
+        units={rateUnits}
+        onUnitsChange={setRateUnits}
+        xDomain={rateXDomain}
+      />
+      <ModelEquationSection />
     </div>
   );
 }
