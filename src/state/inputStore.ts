@@ -295,11 +295,51 @@ function slotItem(
   };
 }
 
-/** True when the current `riskInterval` config carries a usable value. */
+/**
+ * True when the current `riskInterval` config carries a usable value. py-icare requires the interval
+ * to be `'total-followup'`, a positive integer, or a list of positive integers — non-integers are
+ * rejected. The per-subject list-length rule (== study rows) is enforced in `riskIntervalItem`, which
+ * has the study row count.
+ */
 export function riskIntervalValid(ri: RiskIntervalConfig): boolean {
   if (ri.kind === 'total-followup') return true;
-  if (ri.kind === 'years') return Number.isFinite(ri.years) && ri.years > 0;
-  return ri.values.length > 0 && ri.values.every((v) => Number.isFinite(v) && v > 0);
+  if (ri.kind === 'years') return Number.isInteger(ri.years) && ri.years >= 1;
+  return ri.values.length > 0 && ri.values.every((v) => Number.isInteger(v) && v >= 1);
+}
+
+/**
+ * A summary line for a non-default predicted-risk interval. Beyond `riskIntervalValid`'s integer/
+ * positivity rules, it enforces py-icare's rule that a custom per-subject list must have exactly one
+ * value per study row. Returns `null` for the `'total-followup'` default (nothing to show).
+ */
+function riskIntervalItem(s: InputState): ValidationSummaryItem | null {
+  const ri = s.riskInterval;
+  if (ri.kind === 'total-followup') return null;
+  const errors: string[] = [];
+  if (ri.kind === 'years') {
+    if (!(Number.isInteger(ri.years) && ri.years >= 1)) {
+      errors.push('A fixed interval must be a whole number of years ≥ 1.');
+    }
+  } else if (ri.values.length === 0) {
+    errors.push('Enter one whole-number interval per subject.');
+  } else if (!ri.values.every((v) => Number.isInteger(v) && v >= 1)) {
+    errors.push('Custom intervals must be whole numbers ≥ 1.');
+  } else {
+    const n = s.study.parse?.nRows;
+    if (n != null && ri.values.length !== n) {
+      errors.push(
+        `Custom interval list has ${ri.values.length} value(s) but the study has ${n} row(s).`,
+      );
+    }
+  }
+  return {
+    key: 'riskInterval',
+    label: 'Predicted-risk interval',
+    required: true,
+    status: errors.length ? 'invalid' : 'valid',
+    errors,
+    warnings: [],
+  };
 }
 
 /** Build the readiness summary that drives the InputSummaryPanel. */
@@ -351,6 +391,9 @@ export function selectValidationSummary(s: InputState): ValidationSummary {
       );
     }
   }
+
+  const riskItem = riskIntervalItem(s);
+  if (riskItem) items.push(riskItem);
 
   const isNcc = Boolean(s.study.parse?.badges?.includes('ncc'));
 

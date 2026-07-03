@@ -60,11 +60,29 @@ describe('validateStudyData', () => {
     expect(r.errors.join(' ')).not.toMatch(/time_of_onset/);
   });
 
+  it('errors when the mandatory time_of_onset column is missing', async () => {
+    const body = ['study_entry_age,study_exit_age,observed_outcome', '56,67,0'].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/time_of_onset/);
+  });
+
+  it('errors when time_of_onset is empty on a row (missing value)', async () => {
+    const body = [
+      'study_entry_age,study_exit_age,observed_outcome,time_of_onset',
+      '56,67,0,Inf',
+      '51,57,1,',
+    ].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(false);
+    expect(r.errors.join(' ')).toMatch(/time_of_onset/);
+  });
+
   it('flags nested case-control via sampling_weights', async () => {
     const body = [
-      'study_entry_age,study_exit_age,observed_outcome,sampling_weights',
-      '56,67,0,0.1',
-      '51,57,1,1',
+      'study_entry_age,study_exit_age,observed_outcome,sampling_weights,time_of_onset',
+      '56,67,0,0.1,Inf',
+      '51,57,1,1,55',
     ].join('\n');
     const r = await validateStudyData(csvFile('study.csv', body));
     expect(r.ok).toBe(true);
@@ -73,7 +91,9 @@ describe('validateStudyData', () => {
   });
 
   it('warns when exit age precedes entry age', async () => {
-    const body = ['study_entry_age,study_exit_age,observed_outcome', '67,56,0'].join('\n');
+    const body = ['study_entry_age,study_exit_age,observed_outcome,time_of_onset', '67,56,0,Inf'].join(
+      '\n',
+    );
     const r = await validateStudyData(csvFile('study.csv', body));
     expect(r.ok).toBe(true);
     expect(r.warnings.join(' ')).toMatch(/below/);

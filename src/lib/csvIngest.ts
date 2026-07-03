@@ -83,8 +83,27 @@ function requireNonEmpty(table: ParsedTable, result: IngestResult): boolean {
 
 // ---- study data ------------------------------------------------------------
 
-const STUDY_REQUIRED = ['observed_outcome', 'study_entry_age', 'study_exit_age'] as const;
+// py-icare's `_set_study_data` requires all four of these columns and rejects missing values in any
+// of them. `time_of_onset` is validated separately (below) because it accepts `Inf` for censored
+// controls, which is not a finite number.
+const STUDY_REQUIRED = [
+  'observed_outcome',
+  'study_entry_age',
+  'study_exit_age',
+  'time_of_onset',
+] as const;
 const STUDY_NUMERIC = ['study_entry_age', 'study_exit_age', 'observed_followup'] as const;
+const INFINITY_RE = /^[+-]?(inf|infinity)$/i;
+
+/**
+ * A valid `time_of_onset` cell: non-empty and either finite-numeric or an infinity literal. py-icare
+ * casts this column with `float(...)` (so `Inf`/`Infinity`/`-inf` are accepted for censored controls)
+ * and rejects NaN/missing values in the mandatory columns — so an empty cell is a blocking error.
+ */
+function isTimeOfOnset(v: string | undefined): boolean {
+  const s = v?.trim() ?? '';
+  return s !== '' && (isFiniteNumeric(s) || INFINITY_RE.test(s));
+}
 
 /**
  * Validate the top-level study/outcome table. Detects nested case-control designs via a
@@ -119,8 +138,8 @@ export async function validateStudyData(file: File): Promise<IngestResult> {
     }
   }
 
-  // Numeric age columns must parse as finite numbers. `time_of_onset` is intentionally skipped
-  // ("Inf" is a valid censored value in the fixtures).
+  // Numeric age columns must parse as finite numbers. `time_of_onset` is checked separately below
+  // (it also accepts `Inf` for censored controls).
   for (const col of STUDY_NUMERIC) {
     if (!headers.has(col)) continue;
     const bad: number[] = [];
@@ -130,6 +149,20 @@ export async function validateStudyData(file: File): Promise<IngestResult> {
     if (bad.length) {
       result.errors.push(
         `\`${col}\` must be numeric — ${bad.length} row(s) are not (e.g. row ${sampleRows(bad)}).`,
+      );
+    }
+  }
+
+  // time_of_onset must be present and non-empty on every row (py-icare rejects NaN in the mandatory
+  // columns) and either a finite number or an infinity literal (censored controls are `±Inf`).
+  if (headers.has('time_of_onset')) {
+    const bad: number[] = [];
+    table.rows.forEach((row, i) => {
+      if (!isTimeOfOnset(row.time_of_onset)) bad.push(i);
+    });
+    if (bad.length) {
+      result.errors.push(
+        `\`time_of_onset\` must be a number or \`Inf\` on every row — ${bad.length} row(s) are empty or invalid (e.g. row ${sampleRows(bad)}).`,
       );
     }
   }

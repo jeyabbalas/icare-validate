@@ -112,6 +112,26 @@ describe('input readiness selectors', () => {
     expect(selectIsReadyToRun(useInputStore.getState())).toBe(false);
   });
 
+  it('a non-integer fixed risk interval blocks readiness', () => {
+    fillModeARequired();
+    useInputStore.getState().setConfig({ riskInterval: { kind: 'years', years: 2.5 } });
+    expect(selectIsReadyToRun(useInputStore.getState())).toBe(false);
+  });
+
+  it('a custom risk interval must have one integer value per study row', () => {
+    fillModeARequired(); // study validSlot() reports nRows: 1
+    useInputStore.getState().setConfig({ riskInterval: { kind: 'custom', values: [5, 5] } });
+    let summary = selectValidationSummary(useInputStore.getState());
+    expect(summary.ready).toBe(false);
+    expect(summary.items.find((i) => i.key === 'riskInterval')?.status).toBe('invalid');
+
+    // one value matches the single study row → valid and ready
+    useInputStore.getState().setConfig({ riskInterval: { kind: 'custom', values: [5] } });
+    summary = selectValidationSummary(useInputStore.getState());
+    expect(summary.items.find((i) => i.key === 'riskInterval')?.status).toBe('valid');
+    expect(summary.ready).toBe(true);
+  });
+
   it('reset clears study back to an empty slot', () => {
     useInputStore.getState().setStudy(validSlot());
     useInputStore.getState().reset();

@@ -133,17 +133,17 @@ export function RiskIntervalControl({
       {value.kind === 'years' && (
         <input
           type="number"
-          min={0}
-          step="any"
+          min={1}
+          step={1}
           value={Number.isFinite(value.years) ? value.years : ''}
-          onChange={(e) => onChange({ kind: 'years', years: Number(e.target.value) })}
+          onChange={(e) => onChange({ kind: 'years', years: Math.round(Number(e.target.value)) })}
           style={{ ...inputStyle, width: 140, marginTop: 6 }}
         />
       )}
       {value.kind === 'custom' && (
         <input
           type="text"
-          placeholder="e.g. 5, 5, 10 (one per subject)"
+          placeholder="e.g. 5, 5, 10 — whole years, one per subject"
           value={value.values.join(', ')}
           onChange={(e) => onChange({ kind: 'custom', values: parseNumberList(e.target.value) })}
           style={{ ...inputStyle, marginTop: 6 }}
