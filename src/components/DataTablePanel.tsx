@@ -17,10 +17,17 @@ export interface DataTablePanelProps {
   tableName: string;
   /** Optional caption above the table (e.g. the file name). */
   title?: string;
-  minHeight?: number;
+  /**
+   * Fixed pixel height of the table viewport. A DEFINITE height (not min-height) is required: the
+   * library virtualizes rows inside `.dt-body-scroll` (flex:1; overflow:auto), and `.dt-root` is
+   * `height:100%` — so without a bounded host the whole chain falls back to content height and renders
+   * EVERY row (very slow on large datasets). Bounding the host activates the internal scroll + row
+   * virtualization, so cost stays constant regardless of row count.
+   */
+  height?: number;
 }
 
-export function DataTablePanel({ source, tableName, title, minHeight = 420 }: DataTablePanelProps) {
+export function DataTablePanel({ source, tableName, title, height = 480 }: DataTablePanelProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<DataTable | null>(null);
   const [status, setStatus] = useState<Status>('loading');
@@ -122,8 +129,8 @@ export function DataTablePanel({ source, tableName, title, minHeight = 420 }: Da
           {title}
         </h4>
       )}
-      <div style={{ position: 'relative', minHeight }}>
-        <div ref={hostRef} className="dt-preview-host" style={{ minHeight }} />
+      <div style={{ position: 'relative', height }}>
+        <div ref={hostRef} className="dt-preview-host" style={{ height }} />
         {status === 'loading' && <Overlay>Loading table engine…</Overlay>}
         {status === 'unsupported' && (
           <Overlay tone="muted">
