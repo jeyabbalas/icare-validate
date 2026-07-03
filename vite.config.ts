@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -8,8 +9,27 @@ import { VitePWA } from 'vite-plugin-pwa';
 const REPO = 'icare-validate';
 const base = `/${REPO}/`;
 
+// @jeyabbalas/data-table always builds a CodeMirror-based editor chunk for its raw-SQL filter +
+// derived-column UI. We keep those features disabled (see DataTablePanel) and never load that chunk,
+// so instead of installing the 7 optional @codemirror/@lezer peers just to satisfy the build, we
+// alias them to a no-op stub. To enable those features: remove these aliases, install the peers, and
+// flip the expressionFilter / derivedColumns flags in DataTablePanel.
+const codemirrorStub = fileURLToPath(new URL('./src/stubs/codemirror.ts', import.meta.url));
+const CODEMIRROR_STUB_MODULES = [
+  '@codemirror/autocomplete',
+  '@codemirror/commands',
+  '@codemirror/state',
+  '@codemirror/view',
+  '@codemirror/lang-sql',
+  '@codemirror/language',
+  '@lezer/highlight',
+];
+
 export default defineConfig({
   base,
+  resolve: {
+    alias: Object.fromEntries(CODEMIRROR_STUB_MODULES.map((id) => [id, codemirrorStub])),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -49,7 +69,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     // Pyodide must not be esbuild-prebundled; excluding wasm-icare lets Vite see its real ESM + worker.
-    exclude: ['pyodide', 'wasm-icare'],
+    // Same reasoning for data-table + duckdb-wasm: keep their internal `new Worker(new URL(...))` and
+    // WASM resolution intact so the self-hosted (offline) DuckDB bundles load correctly.
+    exclude: ['pyodide', 'wasm-icare', '@jeyabbalas/data-table', '@duckdb/duckdb-wasm'],
   },
   build: {
     target: 'es2022',

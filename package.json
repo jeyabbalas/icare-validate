@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "vendor": "wasm-icare-vendor public/pyodide",
+    "vendor": "wasm-icare-vendor public/pyodide && npm run vendor:duckdb",
+    "vendor:duckdb": "node scripts/vendor-duckdb.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -16,6 +17,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
+    "@jeyabbalas/data-table": "^0.5.1",
     "@observablehq/plot": "^0.6.17",
     "d3-dsv": "^3.0.1",
     "katex": "^0.17.0",

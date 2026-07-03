@@ -13,6 +13,9 @@ dev-dist
 # Vendored Pyodide runtime (tens of MB) — regenerate with `npm run vendor` (CI does too)
 public/pyodide/
 
+# Vendored DuckDB-WASM bundles (tens of MB) — regenerate with `npm run vendor` (CI does too)
+public/duckdb/
+
 # Editor / OS
 .idea/
 .vscode/*
