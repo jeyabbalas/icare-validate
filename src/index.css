@@ -27,7 +27,18 @@
   color-scheme: dark;
 }
 
-/* Phase 2+ aliases the data-table `--dt-*` tokens onto these, e.g. `--dt-bg: var(--app-surface)`. */
+/* Brand-cohesion overrides for the embedded @jeyabbalas/data-table. Light/dark is driven by the
+   `colorScheme` option + setColorScheme() in DataTablePanel (the library's own coherent palette,
+   synced to the app theme); here we only align accent, corner radius, and font with the app chrome.
+   Scoped to `.dt-preview-host .dt-root` so these beat the library's own `[data-dt-color-scheme]`
+   token blocks by specificity, and they reference `--app-*` (which flip under [data-theme='dark']),
+   so they re-theme automatically. */
+.dt-preview-host .dt-root {
+  --dt-primary: var(--app-accent);
+  --dt-accent: var(--app-accent);
+  --dt-radius: var(--app-radius);
+  --dt-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
 
 * {
   box-sizing: border-box;

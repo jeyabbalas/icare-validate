@@ -2,6 +2,7 @@ import type { SlotKind } from '../../lib/csvIngest';
 import { EXAMPLE_IDS, EXAMPLE_LABELS } from '../../lib/examples';
 import { useInputStore, type InputMode, type ModelFileKey } from '../../state/inputStore';
 import { useBinSettingsStore } from '../../state/binSettingsStore';
+import { DataPreviewSection } from './DataPreviewSection';
 import { FileDropSlot } from './FileDropSlot';
 import { InputSummaryPanel } from './InputSummaryPanel';
 import { ReferencePopulationPanel } from './ReferencePopulationPanel';
@@ -96,6 +97,7 @@ export function InputBuilder() {
         <div>{mode === 'A' ? <ModeAPanel /> : <ModeBPanel />}</div>
         <InputSummaryPanel />
       </div>
+      <DataPreviewSection />
     </div>
   );
 }
