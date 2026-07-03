@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "vendor": "wasm-icare-vendor public/pyodide && npm run vendor:duckdb",
     "vendor:duckdb": "node scripts/vendor-duckdb.mjs",
+    "fixtures": "node scripts/dump-calibration-fixtures.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
