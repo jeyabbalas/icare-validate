@@ -56,6 +56,26 @@ export function weightedMean(xs: ArrayLike<number>, ws: ArrayLike<number>): numb
 }
 
 /**
+ * `[min, max]` over the input; `[NaN, NaN]` for an empty input. A single left-to-right pass (never
+ * `Math.min(...xs)`) so it stays safe for the large per-subject arrays. Non-finite entries are skipped by
+ * the strict `<`/`>` comparisons, so a stray NaN doesn't poison the extent (the descriptive columns this
+ * serves — `followup`, `study_entry_age` — are finite anyway).
+ */
+export function extent(xs: ArrayLike<number>): [number, number] {
+  if (xs.length === 0) return [NaN, NaN];
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < xs.length; i += 1) {
+    const v = xs[i];
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  // All entries non-finite (or none passed the comparisons) → report NaN rather than ±Infinity.
+  if (min === Infinity || max === -Infinity) return [NaN, NaN];
+  return [min, max];
+}
+
+/**
  * `np.linspace(start, stop, num)` reproduced bit-for-bit: `y[i] = i·step + start` with
  * `step = (stop − start)/(num − 1)`, then the last point forced exactly to `stop`. This is deliberately
  * NOT the decimal sequence `[0, 0.1, 0.2, …]` — `i·step` differs from those literals in IEEE-754, and the

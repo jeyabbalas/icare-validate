@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ValidationResult } from '../../lib/icareTypes';
 
@@ -33,9 +34,20 @@ export interface Fixture {
   numberOfPercentiles: number;
 }
 
+// Module-relative resolution is correct under the node test env, but vitest's jsdom env rewrites
+// `import.meta.url` so that path misresolves — fall back to the repo root (where vitest always runs, and
+// which the fixture-dump script likewise anchors on via `process.cwd()`).
+function resolveFixture(name: FixtureName): string {
+  const viaModule = fileURLToPath(new URL(`./${name}.json`, import.meta.url));
+  if (existsSync(viaModule)) return viaModule;
+  return path.join(process.cwd(), 'src', 'math', 'fixtures', `${name}.json`);
+}
+
 export function loadFixture(name: FixtureName): Fixture {
-  const file = fileURLToPath(new URL(`./${name}.json`, import.meta.url));
-  const raw = decode(JSON.parse(readFileSync(file, 'utf8')) as Json) as Record<string, unknown>;
+  const raw = decode(JSON.parse(readFileSync(resolveFixture(name), 'utf8')) as Json) as Record<
+    string,
+    unknown
+  >;
   return {
     result: raw as unknown as ValidationResult,
     isNcc: raw.isNcc as boolean,

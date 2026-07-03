@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sumKahan, cumsumKahan, mean, weightedMean, linspace } from './numeric';
+import { sumKahan, cumsumKahan, mean, weightedMean, extent, linspace } from './numeric';
 
 describe('sumKahan', () => {
   it('sums exactly on simple input', () => {
@@ -41,6 +41,24 @@ describe('mean / weightedMean', () => {
 
   it('weightedMean is NaN when weights sum to zero', () => {
     expect(Number.isNaN(weightedMean([1, 2], [0, 0]))).toBe(true);
+  });
+});
+
+describe('extent', () => {
+  it('returns [min, max] in one pass', () => {
+    expect(extent([3, 1, 4, 1, 5, 9, 2, 6])).toEqual([1, 9]);
+    expect(extent(Float64Array.from([0.1, 12, 5.5]))).toEqual([0.1, 12]);
+    expect(extent([42])).toEqual([42, 42]);
+  });
+
+  it('returns [NaN, NaN] for an empty input', () => {
+    const [lo, hi] = extent([]);
+    expect(Number.isNaN(lo)).toBe(true);
+    expect(Number.isNaN(hi)).toBe(true);
+  });
+
+  it('skips a stray NaN rather than poisoning the extent', () => {
+    expect(extent([2, NaN, 5, 1])).toEqual([1, 5]);
   });
 });
 
