@@ -5,8 +5,7 @@ import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection
 import { RelativeRiskCalibrationSection } from './RelativeRiskCalibrationSection';
 import { EoRatioSection } from './EoRatioSection';
 import { RebinControls } from './RebinControls';
-import { useRecomputedCalibration } from './useRecomputedCalibration';
-import type { GofResult } from '../../math/calibrationMath';
+import type { GofResult, RecomputedCalibration } from '../../math/calibrationMath';
 import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 
@@ -55,14 +54,15 @@ function gofTile(label: string, g: GofResult) {
 export function CalibrationPanel({
   result,
   normalized,
+  rc,
 }: {
   result: ValidationResult;
   normalized: NormalizedResult;
+  // One recompute (from `useRecomputedCalibration` in ResultsPanel) is shared by both sub-panels, the
+  // E/O-by-group chart, and the "Download all" export, so the plots, tables, tiles, and files can't
+  // diverge — and it severs the old live binSettingsStore read (a post-run input edit no longer re-bins).
+  rc: RecomputedCalibration;
 }) {
-  // One recompute for both sub-panels, driven by the results-scoped rebinStore (severs the old live
-  // binSettingsStore read, which let a post-run input-config edit silently re-bin the results).
-  const rc = useRecomputedCalibration(normalized);
-
   const eo = result.expectedByObservedRatio;
 
   return (

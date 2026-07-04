@@ -81,6 +81,9 @@ describe('ResultsPanel — grouped summary (both fixtures)', () => {
       expect(text).toContain('χ²');
       expect(text).toContain('df ');
       expect(text).toContain('New validation');
+      // Phase 13 export controls
+      expect(text).toContain('Download all (ZIP)');
+      expect(text).toContain('Download individual files');
     },
   );
 });
