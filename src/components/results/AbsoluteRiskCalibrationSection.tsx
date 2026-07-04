@@ -21,7 +21,8 @@ import type { NormalizedResult } from '../../services/resultNormalizer';
 // annotation from the SDK scalars (so it matches the summary panel verbatim), and pairs the chart with the
 // per-bin table the user asked for. Bounded/centered card so the square (aspectRatio 1) chart is tidy.
 
-const calibrationCard: React.CSSProperties = { ...cardStyle, maxWidth: 560, margin: '0 auto 16px' };
+// Bottom margin dropped: ResultsPanel's calibration grid owns the spacing (gap) between the two cards.
+const calibrationCard: React.CSSProperties = { ...cardStyle, maxWidth: 560, margin: '0 auto' };
 const TITLE = 'Absolute-risk calibration';
 
 export interface AbsoluteRiskCalibrationSectionProps {

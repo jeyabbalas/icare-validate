@@ -22,7 +22,8 @@ import type { NormalizedResult } from '../../services/resultNormalizer';
 // colors to hex (Plot bakes colors in), reads the overall RR goodness-of-fit from the SDK scalar (matches the
 // summary panel verbatim), and offers a linear/log axis toggle (relative risk is multiplicative).
 
-const calibrationCard: React.CSSProperties = { ...cardStyle, maxWidth: 560, margin: '0 auto 16px' };
+// Bottom margin dropped: ResultsPanel's calibration grid owns the spacing (gap) between the two cards.
+const calibrationCard: React.CSSProperties = { ...cardStyle, maxWidth: 560, margin: '0 auto' };
 const TITLE = 'Relative-risk calibration';
 
 type AxisScale = 'linear' | 'log';

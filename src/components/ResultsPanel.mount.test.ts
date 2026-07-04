@@ -105,6 +105,19 @@ describe('ResultsPanel — relative-risk calibration section (both fixtures)', (
   );
 });
 
+describe('ResultsPanel — calibration layout (responsive grid)', () => {
+  it('wraps the two calibration scatters in an auto-fit grid that collapses on narrow screens', () => {
+    seed('bpc3-covariate');
+    const root = createRoot(container);
+    act(() => root.render(createElement(ResultsPanel)));
+    const grid = container.querySelector('[style*="auto-fit"]');
+    expect(grid).not.toBeNull();
+    // Both calibration figures live inside that one grid (the incidence figure is outside it).
+    expect(grid?.querySelectorAll('figure').length).toBe(2);
+    act(() => root.unmount());
+  });
+});
+
 describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
   it('shows raw counts, no nested-case-control badge, no weighted cohort', () => {
     seed('icare-lit-ge50');
