@@ -241,6 +241,26 @@ export async function validateStudyData(file: File): Promise<IngestResult> {
     }
   }
 
+  // Advisory: py-icare casts study_entry_age / study_exit_age with `astype(int)`, which TRUNCATES a
+  // fractional age toward zero (it does not round). Follow-up, person-time, the incidence age grid, and
+  // the baseline-age summaries are then computed from the truncated whole-year values, so fractional ages
+  // shift those figures downward and they will not match the source table. Not blocking — just surfaced.
+  if (headers.has('study_entry_age') && headers.has('study_exit_age')) {
+    const fractional: number[] = [];
+    table.rows.forEach((row, i) => {
+      const entry = Number(row.study_entry_age?.trim());
+      const exit = Number(row.study_exit_age?.trim());
+      const entryFrac = Number.isFinite(entry) && !Number.isInteger(entry);
+      const exitFrac = Number.isFinite(exit) && !Number.isInteger(exit);
+      if (entryFrac || exitFrac) fractional.push(i);
+    });
+    if (fractional.length) {
+      result.warnings.push(
+        `\`study_entry_age\`/\`study_exit_age\` have fractional values in ${fractional.length} row(s) (e.g. row ${sampleRows(fractional)}); iCARE truncates ages to whole years, so follow-up and person-time use the truncated values.`,
+      );
+    }
+  }
+
   // Nested case-control detection.
   if (headers.has('sampling_weights')) {
     result.meta.badges = ['ncc'];

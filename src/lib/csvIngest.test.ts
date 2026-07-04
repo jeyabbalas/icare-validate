@@ -100,6 +100,19 @@ describe('validateStudyData', () => {
     expect(r.warnings.join(' ')).toMatch(/below/);
   });
 
+  it('warns (advisory) when entry/exit ages are fractional — iCARE truncates to whole years', async () => {
+    const body = [
+      'study_entry_age,study_exit_age,observed_outcome,time_of_onset',
+      '52.9,57.1,0,Inf', // fractional entry AND exit
+      '50,60,1,55', // whole years — not counted
+    ].join('\n');
+    const r = await validateStudyData(csvFile('study.csv', body));
+    expect(r.ok).toBe(true); // advisory, never blocking
+    expect(r.warnings.join(' ')).toMatch(/fractional/i);
+    expect(r.warnings.join(' ')).toMatch(/truncat/i);
+    expect(r.warnings.join(' ')).toMatch(/in 1 row/); // exactly the one fractional row
+  });
+
   it('computes study stats: age span, case count, and per-column summaries', async () => {
     const r = await validateStudyData(csvFile('study.csv', goodStudy));
     const st = r.meta.stats;
