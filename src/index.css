@@ -75,6 +75,12 @@ a {
   outline-offset: 2px;
 }
 
+/* The primary view tabs (Stepper). Inline styles can't express a hover, so the muted→foreground lift for
+   an inactive, enabled tab lives here; the active tab's accent color/underline is set inline. */
+.view-tab:hover:not(:disabled) {
+  color: var(--app-fg);
+}
+
 /* The Input tab's two main layouts. Inline styles can't hold a breakpoint, so they live here and collapse
    to a single column on narrow screens (they were fixed 2-col and got cramped below ~720px). `.input-grid`
    = the model-inputs panel + the readiness sidebar; `.config-grid` = the Configuration panel's two fields
