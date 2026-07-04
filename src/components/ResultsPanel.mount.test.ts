@@ -163,6 +163,12 @@ describe('ResultsPanel — discrimination panel (both fixtures)', () => {
       expect(fig?.textContent).toContain('area-normalized');
       expect(fig?.textContent).toContain('overlap');
 
+      // The ROC curve (Phase 11) is stacked below the KDE, in the same panel, with its own caption.
+      const roc = panel?.querySelector('figure[aria-label="Discrimination: ROC curve"]');
+      expect(roc).not.toBeNull();
+      expect(roc?.textContent).toContain('c-statistic');
+      expect(roc?.textContent).toContain('Youden-optimal operating point');
+
       act(() => root.unmount());
     },
   );

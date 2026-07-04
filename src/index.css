@@ -135,13 +135,18 @@ a {
   }
 }
 
-/* Discrimination panel (Phase 10): the lone KDE figure, centred and width-capped so a wide viewport doesn't
-   letterbox the density plot. Phase 11 adds the ROC beside it (a `.disc-grid`, cloning the `.cal-grid`
-   subgrid pattern above). `margin: 0 auto` also resets the browser's default <figure> margin. */
+/* Discrimination panel: each figure centred and width-capped so a wide viewport doesn't letterbox it.
+   `margin: 0 auto` also resets the browser's default <figure> margin. Phase 11 stacks the ROC BELOW the KDE
+   (both `.disc-figure`); the landscape KDE gets the full 900px, but the ROC is square, so `.roc-figure` caps
+   it at the calibration-square width (560px) — a giant 900px square would dwarf the density above it. */
 .disc-figure {
   margin: 0 auto;
   max-width: 900px;
   min-width: 0;
+}
+
+.disc-figure.roc-figure {
+  max-width: 560px;
 }
 
 /* Indeterminate spinner for the Validate step (the SDK exposes no boot/compute progress). */
