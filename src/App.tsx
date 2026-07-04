@@ -10,7 +10,7 @@ export default function App() {
   const step = useAppStore((s) => s.step);
 
   return (
-    <div style={{ maxWidth: 1080, margin: '0 auto', padding: 16 }}>
+    <div style={{ maxWidth: 1280, margin: '0 auto', padding: 16 }}>
       <AppHeader />
       <Stepper />
       {step === 'input' ? (

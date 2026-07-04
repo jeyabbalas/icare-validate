@@ -79,15 +79,17 @@ function eoCell(bin: CalibrationBin): React.ReactNode {
 }
 
 /**
- * The group number with its risk-score (linear-predictor) interval beneath it, muted. Used only for the
- * relative-risk scale: relative risk is monotonic in the linear predictor, so these LP-quantile bin
- * boundaries map to clean, contiguous bands (unlike absolute risk, which isn't monotonic in the LP).
+ * The group number with its risk-score (linear-predictor) interval beside it, muted, on a single line. Used
+ * only for the relative-risk scale: relative risk is monotonic in the linear predictor, so these LP-quantile
+ * bin boundaries map to clean, contiguous bands (unlike absolute risk, which isn't monotonic in the LP).
  */
 function groupCell(bin: CalibrationBin): React.ReactNode {
   return (
     <>
-      <div>{bin.index + 1}</div>
-      <div style={{ color: 'var(--app-muted)', fontSize: 11, fontWeight: 400 }}>{bin.label}</div>
+      {bin.index + 1}
+      <span style={{ color: 'var(--app-muted)', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>
+        {bin.label}
+      </span>
     </>
   );
 }

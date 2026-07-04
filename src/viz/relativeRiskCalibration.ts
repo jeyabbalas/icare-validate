@@ -20,9 +20,9 @@
 //   • `renderRelativeRiskCalibrationChart` — takes the lazily-loaded Plot module + the active axis scale and
 //     returns a bare <svg>. EQUAL x/y domains over a square frame (square svg, equal margin sums) keep the
 //     identity line a true 45° in BOTH linear and log. Adds a faint RR = 1 crosshair (the population-average
-//     stratum) kept subordinate to the emphasized identity line, and small group-number labels so each decile
-//     is identifiable on-plot (the exact interval lives in the tooltip + the per-bin table). Colors arrive
-//     resolved to hex; the title/legend/annotation are baked as text marks (self-describing downloads) with
+//     stratum) kept subordinate to the emphasized identity line; the group's risk-score interval lives only in
+//     the hover tooltip + the per-bin table (no on-plot label). Colors arrive resolved to hex; the
+//     title/legend/annotation are baked as text marks (self-describing downloads) with
 //     NO Plot title/caption/legend option (those return an HTML <figure> that can't export as one image).
 
 import type * as PlotNS from '@observablehq/plot';
@@ -119,7 +119,7 @@ export function buildRelativeRiskCalibration(rc: RecomputedCalibration): Relativ
 
 /** Theme-resolved colors passed in from the section (Plot bakes colors in; it can't read CSS vars). */
 export interface RelativeRiskCalibrationColors {
-  /** Foreground: axis text, gridlines, title, legend labels, group-number labels, tip text. */
+  /** Foreground: axis text, gridlines, title, legend labels, tip text. */
   fg: string;
   /** Muted ink: the identity line, the RR = 1 crosshair, and the goodness-of-fit annotation. */
   muted: string;
@@ -234,20 +234,6 @@ export function renderRelativeRiskCalibrationChart(
       r: 4.5,
       stroke: colors.surface,
       strokeWidth: 1.5,
-    }),
-  );
-
-  // Group-number labels beside each marker, so every decile is identifiable on-plot (the exact risk-score
-  // interval lives in the hover tooltip + the per-bin table). Offset right of the dot to clear its whisker.
-  marks.push(
-    Plot.text(points, {
-      x: 'predRr',
-      y: 'obsRr',
-      text: (d: RelativeRiskScatterPoint) => String(d.group),
-      dx: 8,
-      textAnchor: 'start',
-      fontSize: 10,
-      fill: colors.fg,
     }),
   );
 

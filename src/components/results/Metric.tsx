@@ -9,6 +9,7 @@ const card: React.CSSProperties = {
   padding: 12,
   background: 'var(--app-surface-2)',
   minWidth: 132,
+  maxWidth: 300,
   flex: '1 1 132px',
 };
 const labelStyle: React.CSSProperties = {

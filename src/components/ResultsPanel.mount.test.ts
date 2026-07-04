@@ -66,7 +66,7 @@ describe('ResultsPanel — grouped summary (both fixtures)', () => {
       expect(text).toContain(label);
     }
     // goodness-of-fit lines
-    expect(text).toContain('Hosmer–Lemeshow (absolute risk)');
+    expect(text).toContain('Hosmer–Lemeshow');
     expect(text).toContain('Relative-risk GOF');
     expect(text).toContain('χ²');
     expect(text).toContain('df ');
@@ -118,7 +118,7 @@ describe('ResultsPanel — unified calibration panel (both fixtures)', () => {
       // Overall E/O-in-the-large + its 95% CI, and both goodness-of-fit lines, moved into the panel header.
       expect(panel?.textContent).toContain('E / O ratio');
       expect(panel?.textContent).toContain('95% CI');
-      expect(panel?.textContent).toContain('Hosmer–Lemeshow (absolute risk)');
+      expect(panel?.textContent).toContain('Hosmer–Lemeshow');
       expect(panel?.textContent).toContain('Relative-risk GOF');
 
       // Both calibration scatters share the one responsive grid (the incidence figure sits outside it).
