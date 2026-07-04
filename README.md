@@ -60,6 +60,23 @@ One-click examples (loadable in the input builder), copied from `wasm-icare`'s `
 - **BPC3** — nested case-control (inverse-probability weighting), 72 SNPs, a
   `C(menopause_hrt):C(bmi)` interaction, and a family-history variable — `public/examples/bpc3/`.
 
+## Reproduce elsewhere (the **Code** tab)
+
+The **Code** tab (the third view, reachable once the inputs are valid) generates copyable,
+ready-to-run code that reproduces the current validation in another environment — no need to rerun it
+in the app:
+
+- **Python** — `py-icare` natively (`validate_absolute_risk_model`).
+- **JavaScript** — `wasm-icare` for Node (`{ path }` inputs) or a self-contained browser page
+  (File inputs, engine from the esm.sh CDN).
+- **R** — a Quarto notebook: an R chunk serializes each file's raw text to an `{ojs}` cell that
+  rebuilds `Blob`s and runs `wasm-icare` in the browser.
+
+The code is generated from your current inputs (files referenced by name — edit the `EDIT`-marked
+paths). Hand-written, verified reference versions live in `scripts/reproduce/` (all reproduce the
+iCARE-Lit ge50 goldens: AUC 0.6341, E/O 1.0275, HL χ² 23.17); `node scripts/verify-reproduce.mjs`
+re-checks them against the vendored engine.
+
 ## Troubleshooting
 
 **Console line `[FeatureLifecycle:sentence-player] Re-entrant handleLifecycle call …`** — this is
