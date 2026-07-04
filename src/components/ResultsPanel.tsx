@@ -2,6 +2,7 @@ import { useAppStore } from '../state/appStore';
 import { useResultsStore } from '../state/resultsStore';
 import type { ValidationResult } from '../lib/icareTypes';
 import { CohortSummaryPanel } from './results/CohortSummaryPanel';
+import { IncidenceRatesSection } from './results/IncidenceRatesSection';
 
 // Phase 6: the Results-step container. Guards the empty state, renders the page header (dataset / model /
 // interval + a nested-case-control badge and the "New validation" action), then the grouped cohort
@@ -80,6 +81,8 @@ export function ResultsPanel() {
       </div>
 
       <CohortSummaryPanel result={result} normalized={normalized} />
+
+      <IncidenceRatesSection incidence={normalized.incidence} isNcc={normalized.isNcc} />
 
       {import.meta.env.DEV && <DevInspector result={result} />}
     </main>
