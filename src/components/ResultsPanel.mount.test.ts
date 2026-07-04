@@ -196,6 +196,18 @@ describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
     expect(text).not.toContain('effective cohort');
     expect(text).not.toContain('wt. mean');
   });
+
+  it('surfaces the incidence proportion, the censoring breakdown, and total person-time', () => {
+    seed('icare-lit-ge50');
+    const text = mount();
+    expect(text).toContain('Censored');
+    expect(text).toContain('4,817'); // 5,000 − 183 censored
+    expect(text).toContain('% of subjects'); // Cases + Censored incidence sub-lines (raw sample)
+    expect(text).toContain('event-free');
+    expect(text).toContain('after horizon');
+    expect(text).toContain('person-yr'); // total person-time on the Follow-up tile
+    expect(text).not.toContain('of source pop.'); // that phrasing is nested-case-control-only
+  });
 });
 
 describe('ResultsPanel — nested case-control (BPC3)', () => {
@@ -210,5 +222,16 @@ describe('ResultsPanel — nested case-control (BPC3)', () => {
     expect(text).toContain('wt. mean'); // weighted follow-up / age means
     expect(text).toContain('0.600'); // AUC ≈ 0.6002 golden
     expect(text).toContain('0.952'); // E/O ratio
+  });
+
+  it('shows a design-weighted incidence + censoring breakdown for the nested design', () => {
+    seed('bpc3-covariate');
+    const text = mount();
+    expect(text).toContain('Censored');
+    expect(text).toContain('4,034'); // 5,285 − 1,251 raw censored (the tile value)
+    expect(text).toContain('of source pop.'); // incidence proportion off the weighted effective cohort
+    expect(text).toContain('event-free');
+    expect(text).toContain('after horizon');
+    expect(text).toContain('person-yr'); // total person-time on the Follow-up tile
   });
 });

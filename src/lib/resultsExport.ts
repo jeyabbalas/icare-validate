@@ -200,6 +200,12 @@ export function cohortSummaryCsv(s: CohortSummary): string {
   const rows: Record<string, string>[] = [
     { metric: 'n_subjects', value: String(s.nSubjects) },
     { metric: 'n_cases', value: encodeCell(s.nCases) },
+    { metric: 'n_censored', value: encodeCell(s.nCensored) },
+    { metric: 'n_event_free', value: encodeCell(s.nEventFree) },
+    { metric: 'n_censored_after_horizon', value: encodeCell(s.nAfterHorizon) },
+    { metric: 'case_fraction', value: encodeCell(s.caseFraction) },
+    { metric: 'censored_fraction', value: encodeCell(s.censoredFraction) },
+    { metric: 'person_years', value: encodeCell(s.personYears) },
     { metric: 'followup_mean', value: encodeCell(s.followupMean) },
     { metric: 'followup_min', value: encodeCell(s.followupMin) },
     { metric: 'followup_max', value: encodeCell(s.followupMax) },
@@ -211,6 +217,8 @@ export function cohortSummaryCsv(s: CohortSummary): string {
     rows.push(
       { metric: 'effective_n', value: encodeCell(s.weighted.effectiveN) },
       { metric: 'effective_cases', value: encodeCell(s.weighted.effectiveCases) },
+      { metric: 'effective_censored', value: encodeCell(s.weighted.effectiveCensored) },
+      { metric: 'weighted_case_fraction', value: encodeCell(s.weighted.weightedCaseFraction) },
       { metric: 'weighted_followup_mean', value: encodeCell(s.weighted.followupMean) },
       { metric: 'weighted_baseline_age_mean', value: encodeCell(s.weighted.baselineAgeMean) },
     );

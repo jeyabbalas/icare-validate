@@ -163,13 +163,21 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
     const csv = cohortSummaryCsv(summary);
     const json = JSON.parse(cohortSummaryJson(summary));
     expect(csv).toContain('n_subjects');
+    expect(csv).toContain('n_censored');
+    expect(csv).toContain('n_event_free');
+    expect(csv).toContain('person_years');
     expect(json.nSubjects).toBe(normalized.perSubject.n);
+    expect(json.nCensored).toBe(summary.nCensored);
+    expect(json.personYears).toBe(summary.personYears);
     if (normalized.isNcc) {
       expect(csv).toContain('effective_n');
+      expect(csv).toContain('effective_censored');
+      expect(csv).toContain('weighted_case_fraction');
       expect(csv).toContain('weighted_followup_mean');
       expect(json.weighted).not.toBeNull();
     } else {
       expect(csv).not.toContain('effective_n');
+      expect(csv).not.toContain('effective_censored');
       expect(json.weighted).toBeNull();
     }
   });
