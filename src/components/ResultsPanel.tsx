@@ -4,6 +4,7 @@ import type { ValidationResult } from '../lib/icareTypes';
 import { CohortSummaryPanel } from './results/CohortSummaryPanel';
 import { IncidenceRatesSection } from './results/IncidenceRatesSection';
 import { CalibrationPanel } from './results/CalibrationPanel';
+import { DiscriminationPanel } from './results/DiscriminationPanel';
 
 // Phase 6: the Results-step container. Guards the empty state, renders the page header (dataset / model /
 // interval + a nested-case-control badge and the "New validation" action), then the grouped cohort
@@ -81,11 +82,13 @@ export function ResultsPanel() {
         </div>
       </div>
 
-      <CohortSummaryPanel result={result} normalized={normalized} />
+      <CohortSummaryPanel normalized={normalized} />
 
       <IncidenceRatesSection incidence={normalized.incidence} isNcc={normalized.isNcc} />
 
       <CalibrationPanel result={result} normalized={normalized} />
+
+      <DiscriminationPanel result={result} normalized={normalized} />
 
       {import.meta.env.DEV && <DevInspector result={result} />}
     </main>
@@ -102,7 +105,10 @@ function DevInspector({ result }: { result: ValidationResult }) {
     expectedByObservedRatio: result.expectedByObservedRatio,
     calibration: result.calibration,
     reference: result.reference
-      ? { absoluteRisk: result.reference.absoluteRisk.length, riskScore: result.reference.riskScore.length }
+      ? {
+          absoluteRisk: result.reference.absoluteRisk.length,
+          riskScore: result.reference.riskScore.length,
+        }
       : null,
     frames: {
       studyData: { order: result.studyData.order, nRows: result.studyData.nRows },

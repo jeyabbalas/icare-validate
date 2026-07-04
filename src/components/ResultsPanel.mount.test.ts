@@ -54,24 +54,35 @@ describe('ResultsPanel — empty state', () => {
 });
 
 describe('ResultsPanel — grouped summary (both fixtures)', () => {
-  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('renders every group for %s', (name) => {
-    seed(name);
-    const text = mount();
-    // Cohort + Discrimination are the summary groups; Calibration is now its own panel below.
-    expect(text).toContain('Cohort');
-    expect(text).toContain('Calibration');
-    expect(text).toContain('Discrimination');
-    // metric labels
-    for (const label of ['Subjects', 'Cases', 'Follow-up', 'Baseline age', 'E / O ratio', 'AUC', 'Brier score']) {
-      expect(text).toContain(label);
-    }
-    // goodness-of-fit lines
-    expect(text).toContain('Hosmer–Lemeshow');
-    expect(text).toContain('Relative-risk GOF');
-    expect(text).toContain('χ²');
-    expect(text).toContain('df ');
-    expect(text).toContain('New validation');
-  });
+  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])(
+    'renders every group for %s',
+    (name) => {
+      seed(name);
+      const text = mount();
+      // Cohort is the summary group; Calibration and Discrimination are their own dedicated panels below.
+      expect(text).toContain('Cohort');
+      expect(text).toContain('Calibration');
+      expect(text).toContain('Discrimination');
+      // metric labels
+      for (const label of [
+        'Subjects',
+        'Cases',
+        'Follow-up',
+        'Baseline age',
+        'E / O ratio',
+        'AUC',
+        'Brier score',
+      ]) {
+        expect(text).toContain(label);
+      }
+      // goodness-of-fit lines
+      expect(text).toContain('Hosmer–Lemeshow');
+      expect(text).toContain('Relative-risk GOF');
+      expect(text).toContain('χ²');
+      expect(text).toContain('df ');
+      expect(text).toContain('New validation');
+    },
+  );
 });
 
 describe('ResultsPanel — absolute-risk calibration section (both fixtures)', () => {
@@ -125,6 +136,32 @@ describe('ResultsPanel — unified calibration panel (both fixtures)', () => {
       const grid = panel?.querySelector('.cal-grid');
       expect(grid).not.toBeNull();
       expect(grid?.querySelectorAll('figure').length).toBe(2);
+
+      act(() => root.unmount());
+    },
+  );
+});
+
+describe('ResultsPanel — discrimination panel (both fixtures)', () => {
+  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])(
+    'houses the AUC + Brier tiles and the risk-density KDE in one Discrimination container for %s',
+    (name) => {
+      seed(name);
+      const root = createRoot(container);
+      act(() => root.render(createElement(ResultsPanel)));
+
+      const panel = container.querySelector('section[aria-label="Discrimination"]');
+      expect(panel).not.toBeNull();
+      // The overall discrimination stats moved out of the cohort summary into this panel's header.
+      expect(panel?.textContent).toContain('AUC');
+      expect(panel?.textContent).toContain('Brier score');
+      // The KDE figure (and its epidemiological caption) live inside the panel.
+      const fig = panel?.querySelector(
+        'figure[aria-label="Discrimination: predicted-risk distribution"]',
+      );
+      expect(fig).not.toBeNull();
+      expect(fig?.textContent).toContain('area-normalized');
+      expect(fig?.textContent).toContain('overlap');
 
       act(() => root.unmount());
     },

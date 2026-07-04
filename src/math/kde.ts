@@ -84,8 +84,7 @@ function fitKde(
   if (!(variance > 0) || n < 2) return { bandwidth: 0, weightSum };
 
   const bwAdjust = opts.bwAdjust ?? 0.5;
-  const factor =
-    opts.bwMethod === 'scott' ? Math.pow(neff, -0.2) : Math.pow((neff * 3) / 4, -0.2);
+  const factor = opts.bwMethod === 'scott' ? Math.pow(neff, -0.2) : Math.pow((neff * 3) / 4, -0.2);
   return { bandwidth: bwAdjust * factor * Math.sqrt(variance), weightSum };
 }
 
@@ -242,8 +241,14 @@ export function discriminationDensities(
   const pad = cut * Math.max(hCase, hCtrl, 0);
   const [caseLo, caseHi] = extent(caseRisk);
   const [ctrlLo, ctrlHi] = extent(ctrlRisk);
-  const lo = Math.min(Number.isFinite(caseLo) ? caseLo : Infinity, Number.isFinite(ctrlLo) ? ctrlLo : Infinity);
-  const hi = Math.max(Number.isFinite(caseHi) ? caseHi : -Infinity, Number.isFinite(ctrlHi) ? ctrlHi : -Infinity);
+  const lo = Math.min(
+    Number.isFinite(caseLo) ? caseLo : Infinity,
+    Number.isFinite(ctrlLo) ? ctrlLo : Infinity,
+  );
+  const hi = Math.max(
+    Number.isFinite(caseHi) ? caseHi : -Infinity,
+    Number.isFinite(ctrlHi) ? ctrlHi : -Infinity,
+  );
   const gridLo = Number.isFinite(lo) ? lo - pad : 0;
   const gridHi = Number.isFinite(hi) ? hi + pad : 1;
   const grid = linspace(gridLo, gridHi === gridLo ? gridLo + 1 : gridHi, gridSize);

@@ -135,6 +135,15 @@ a {
   }
 }
 
+/* Discrimination panel (Phase 10): the lone KDE figure, centred and width-capped so a wide viewport doesn't
+   letterbox the density plot. Phase 11 adds the ROC beside it (a `.disc-grid`, cloning the `.cal-grid`
+   subgrid pattern above). `margin: 0 auto` also resets the browser's default <figure> margin. */
+.disc-figure {
+  margin: 0 auto;
+  max-width: 900px;
+  min-width: 0;
+}
+
 /* Indeterminate spinner for the Validate step (the SDK exposes no boot/compute progress). */
 @keyframes icv-spin {
   to {
