@@ -10,6 +10,8 @@ vi.mock('./icareService', () => ({
 import { validate } from './icareService';
 import { runValidation } from './validationRunner';
 import { useInputStore, type FileSlot, type ModelFileKey } from '../state/inputStore';
+import { useBinSettingsStore } from '../state/binSettingsStore';
+import { useRebinStore } from '../state/rebinStore';
 import { useResultsStore } from '../state/resultsStore';
 import { useAppStore } from '../state/appStore';
 import type { ColumnarTableResult, ValidationResult } from '../lib/icareTypes';
@@ -80,6 +82,13 @@ beforeEach(() => {
   useInputStore.getState().reset();
   useResultsStore.getState().reset();
   useAppStore.setState({ step: 'input' });
+  useRebinStore.setState({
+    scale: 'linear-predictor',
+    method: 'quantiles',
+    numberOfPercentiles: 10,
+    cutpoints: null,
+    defaultSpec: null,
+  });
 });
 
 describe('runValidation', () => {
@@ -96,6 +105,21 @@ describe('runValidation', () => {
     expect(rs.error).toBeNull();
     expect(useAppStore.getState().step).toBe('results');
     expect(validate).toHaveBeenCalledOnce();
+  });
+
+  it('seeds the rebin default from the run so Reset reproduces the SDK bins', async () => {
+    makeReadyModeA();
+    useBinSettingsStore.setState({ numberOfPercentiles: 12 });
+    useInputStore.getState().setConfig({ linearPredictorCutoffs: [-1, 1] });
+    vi.mocked(validate).mockResolvedValue(fakeResult);
+
+    await runValidation();
+
+    const rb = useRebinStore.getState();
+    expect(rb.scale).toBe('linear-predictor');
+    expect(rb.method).toBe('cutpoints'); // the run used LP cutoffs
+    expect(rb.cutpoints).toEqual([-1, 1]);
+    expect(rb.defaultSpec).toEqual({ numberOfPercentiles: 12, linearPredictorCutoffs: [-1, 1] });
   });
 
   it('surfaces a mapped error and stays on the Validate step', async () => {

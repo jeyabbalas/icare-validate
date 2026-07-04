@@ -2,6 +2,7 @@ import { buildValidateOptions } from '../lib/buildValidateOptions';
 import { useAppStore } from '../state/appStore';
 import { useBinSettingsStore } from '../state/binSettingsStore';
 import { selectIsReadyToRun, useInputStore } from '../state/inputStore';
+import { useRebinStore } from '../state/rebinStore';
 import { useResultsStore } from '../state/resultsStore';
 import { validate } from './icareService';
 import { normalizeValidationResult } from './resultNormalizer';
@@ -28,6 +29,12 @@ export async function runValidation(): Promise<void> {
     const result = await validate(buildValidateOptions(input, binSettings));
     const normalized = normalizeValidationResult(result);
     useResultsStore.setState({ result, normalized, status: 'done', error: null });
+    // Seed the results-step re-binning from what the SDK actually binned, so the calibration view opens
+    // reproducing the frozen result and "Reset to default" returns here — immune to later input edits.
+    useRebinStore.getState().initFromRun({
+      numberOfPercentiles: binSettings.numberOfPercentiles,
+      linearPredictorCutoffs: input.linearPredictorCutoffs ?? null,
+    });
     useAppStore.getState().setStep('results');
   } catch (err) {
     // `validate` already maps SDK errors to friendly text; the normalizer's guard is user-readable too.
