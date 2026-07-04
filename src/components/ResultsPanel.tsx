@@ -11,9 +11,11 @@ import { CohortSummaryPanel } from './results/CohortSummaryPanel';
 import { IncidenceRatesSection } from './results/IncidenceRatesSection';
 import { CalibrationPanel } from './results/CalibrationPanel';
 import { DiscriminationPanel } from './results/DiscriminationPanel';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
 
 // Phase 6: the Results-step container. Guards the empty state, renders the page header (dataset / model /
-// interval + a nested-case-control badge and the "New validation" action), then the grouped cohort
+// interval + a nested-case-control badge and the "Edit inputs" action), then the grouped cohort
 // summary and the visualization sections (Phases 7–11). Phase 13 adds the export actions — a "Download
 // all (ZIP)" button and a collapsible list of individual result-file downloads — and lifts the single
 // calibration recompute (`rc`) up here so the plots, tables, tiles, and the exported files all share one
@@ -24,31 +26,6 @@ const emptyCard: React.CSSProperties = {
   borderRadius: 'var(--app-radius)',
   padding: 16,
   background: 'var(--app-surface)',
-};
-const btn: React.CSSProperties = {
-  padding: '8px 12px',
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius)',
-  background: 'var(--app-surface-2)',
-  color: 'var(--app-fg)',
-  cursor: 'pointer',
-};
-const primaryBtn: React.CSSProperties = {
-  ...btn,
-  border: '1px solid var(--app-accent)',
-  background: 'var(--app-accent)',
-  color: 'var(--app-accent-fg)',
-  fontWeight: 600,
-};
-const badge: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  padding: '2px 8px',
-  borderRadius: 999,
-  border: '1px solid var(--app-border)',
-  background: 'var(--app-surface-2)',
-  color: 'var(--app-muted)',
-  whiteSpace: 'nowrap',
 };
 const headerRow: React.CSSProperties = {
   display: 'flex',
@@ -65,7 +42,7 @@ const downloadsDetails: React.CSSProperties = {
   background: 'var(--app-surface)',
   padding: '10px 12px',
 };
-const fileBtn: React.CSSProperties = { ...btn, padding: '4px 10px', fontSize: 12 };
+const fileBtnStyle: React.CSSProperties = { padding: '4px 10px', fontSize: 12 };
 
 export function ResultsPanel() {
   const result = useResultsStore((s) => s.result);
@@ -76,11 +53,11 @@ export function ResultsPanel() {
     return (
       <main style={emptyCard}>
         <p style={{ marginTop: 0, color: 'var(--app-muted)' }}>
-          No results yet — run a validation from the Input step.
+          No results yet — run a validation from the Input tab.
         </p>
-        <button type="button" onClick={() => setStep('input')} style={btn}>
+        <Button variant="secondary" onClick={() => setStep('input')}>
           ← Back to input
-        </button>
+        </Button>
       </main>
     );
   }
@@ -145,19 +122,18 @@ function ResultsContent({
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {normalized.isNcc && <span style={badge}>nested case-control</span>}
-          <button
-            type="button"
+          {normalized.isNcc && <Badge>nested case-control</Badge>}
+          <Button
+            variant="primary"
             onClick={() => void onDownloadAll()}
             disabled={busy}
             aria-label="Download all results as a ZIP"
-            style={{ ...primaryBtn, opacity: busy ? 0.6 : 1, cursor: busy ? 'default' : 'pointer' }}
           >
             {busy ? 'Preparing ZIP…' : '⬇ Download all (ZIP)'}
-          </button>
-          <button type="button" onClick={() => setStep('input')} style={btn}>
-            New validation
-          </button>
+          </Button>
+          <Button variant="secondary" onClick={() => setStep('input')}>
+            Edit inputs
+          </Button>
         </div>
       </div>
 
@@ -177,14 +153,14 @@ function ResultsContent({
         {files && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {Object.entries(files).map(([name, text]) => (
-              <button
+              <Button
                 key={name}
-                type="button"
-                style={fileBtn}
+                variant="secondary"
+                style={fileBtnStyle}
                 onClick={() => downloadText(text, name)}
               >
                 ⬇ {name}
-              </button>
+              </Button>
             ))}
           </div>
         )}

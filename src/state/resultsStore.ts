@@ -7,7 +7,8 @@ export type RunStatus = 'idle' | 'running' | 'done' | 'error';
 // Populated by `runValidation` (services/validationRunner). Holds the raw `ValidationResult` (scalar
 // metrics are already camelCased on it and read straight from here) plus the decoded `NormalizedResult`
 // (per-subject / per-bin / incidence arrays) that the downstream phases bind to. The run lifecycle
-// (`status`/`error`) drives the Validate-step progress UI. `reset` clears everything to the idle slate.
+// (`status`/`error`) drives the Input-tab inline progress bar (RunActionBar) — the run now happens on the
+// Input tab and auto-advances to Results only on success. `reset` clears everything to the idle slate.
 interface ResultsState {
   result: ValidationResult | null;
   normalized: NormalizedResult | null;

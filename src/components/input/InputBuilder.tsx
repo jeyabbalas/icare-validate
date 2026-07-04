@@ -3,12 +3,14 @@ import type { SlotKind } from '../../lib/csvIngest';
 import { EXAMPLE_IDS, EXAMPLE_LABELS } from '../../lib/examples';
 import { useInputStore, type InputMode, type ModelFileKey } from '../../state/inputStore';
 import { useBinSettingsStore } from '../../state/binSettingsStore';
+import { useResultsStore } from '../../state/resultsStore';
 import { DataPreviewSection } from './DataPreviewSection';
 import { FileDropSlot } from './FileDropSlot';
 import { InputSummaryPanel } from './InputSummaryPanel';
 import { ModelEquationSection } from './ModelEquationSection';
 import { RatesChartSection, type RateUnits } from './RatesChartSection';
 import { ReferencePopulationPanel } from './ReferencePopulationPanel';
+import { RunActionBar } from './RunActionBar';
 import { NumberField, NumericListField, RiskIntervalControl, TextField } from './fields';
 
 // Layout tokens reused across the sub-panels.
@@ -110,44 +112,49 @@ export function InputBuilder() {
     return [Math.min(...ranges.map((r) => r[0])), Math.max(...ranges.map((r) => r[1]))];
   }, [diseaseStats, competingStats, mode]);
 
+  // While a run is in flight we stay on the Input tab and dim the form to signal "busy" — but keep it
+  // interactive (no pointer-events lock): the runner snapshots the stores at call time, so edits made
+  // mid-run simply apply to the next run. The RunActionBar sits outside this wrapper so it stays opaque
+  // and holds the live progress/error.
+  const running = useResultsStore((s) => s.status === 'running');
+
   return (
     <div>
-      <ExampleLoaderBar />
-      <ModeToggle />
-      <ConfigPanel />
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(240px, 320px)',
-          gap: 16,
-          alignItems: 'start',
-        }}
+        aria-busy={running}
+        style={{ opacity: running ? 0.55 : 1, transition: 'opacity 0.15s ease' }}
       >
-        <div>{mode === 'A' ? <ModeAPanel /> : <ModeBPanel />}</div>
-        <InputSummaryPanel />
+        <ExampleLoaderBar />
+        <ModeToggle />
+        <ConfigPanel />
+        <div className="input-grid">
+          <div>{mode === 'A' ? <ModeAPanel /> : <ModeBPanel />}</div>
+          <InputSummaryPanel />
+        </div>
+        <DataPreviewSection />
+        <RatesChartSection
+          slotKey="modelDiseaseIncidenceRates"
+          title="Disease incidence rates"
+          caption="Baseline age-specific incidence of the disease — the hazard the relative-risk model scales by exp(Σβx) to obtain each subject's risk."
+          colorLight={DISEASE_COLOR.light}
+          colorDark={DISEASE_COLOR.dark}
+          units={rateUnits}
+          onUnitsChange={setRateUnits}
+          xDomain={rateXDomain}
+        />
+        <RatesChartSection
+          slotKey="modelCompetingIncidenceRates"
+          title="Competing incidence rates (all-cause mortality)"
+          caption="Age-specific all-cause mortality — the competing risk of dying from another cause before the disease occurs, which iCARE integrates to attenuate absolute risk."
+          colorLight={MORTALITY_COLOR.light}
+          colorDark={MORTALITY_COLOR.dark}
+          units={rateUnits}
+          onUnitsChange={setRateUnits}
+          xDomain={rateXDomain}
+        />
+        <ModelEquationSection />
       </div>
-      <DataPreviewSection />
-      <RatesChartSection
-        slotKey="modelDiseaseIncidenceRates"
-        title="Disease incidence rates"
-        caption="Baseline age-specific incidence of the disease — the hazard the relative-risk model scales by exp(Σβx) to obtain each subject's risk."
-        colorLight={DISEASE_COLOR.light}
-        colorDark={DISEASE_COLOR.dark}
-        units={rateUnits}
-        onUnitsChange={setRateUnits}
-        xDomain={rateXDomain}
-      />
-      <RatesChartSection
-        slotKey="modelCompetingIncidenceRates"
-        title="Competing incidence rates (all-cause mortality)"
-        caption="Age-specific all-cause mortality — the competing risk of dying from another cause before the disease occurs, which iCARE integrates to attenuate absolute risk."
-        colorLight={MORTALITY_COLOR.light}
-        colorDark={MORTALITY_COLOR.dark}
-        units={rateUnits}
-        onUnitsChange={setRateUnits}
-        xDomain={rateXDomain}
-      />
-      <ModelEquationSection />
+      <RunActionBar />
     </div>
   );
 }
@@ -256,7 +263,7 @@ function ConfigPanel() {
   return (
     <div style={cardStyle}>
       <h3 style={cardTitle}>Configuration</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
+      <div className="config-grid">
         <RiskIntervalControl
           value={riskInterval}
           onChange={(v) => setConfig({ riskInterval: v })}

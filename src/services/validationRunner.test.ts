@@ -122,7 +122,7 @@ describe('runValidation', () => {
     expect(rb.defaultSpec).toEqual({ numberOfPercentiles: 12, linearPredictorCutoffs: [-1, 1] });
   });
 
-  it('surfaces a mapped error and stays on the Validate step', async () => {
+  it('surfaces a mapped error and stays on the Input step', async () => {
     makeReadyModeA();
     vi.mocked(validate).mockRejectedValue(new Error('Runtime assets missing (no Pyodide indexURL).'));
 
@@ -133,7 +133,25 @@ describe('runValidation', () => {
     expect(rs.error).toMatch(/runtime assets missing/i);
     expect(rs.result).toBeNull();
     expect(rs.normalized).toBeNull();
-    expect(useAppStore.getState().step).toBe('validate');
+    // No navigation on failure — we stay on Input; the RunActionBar surfaces the error inline.
+    expect(useAppStore.getState().step).toBe('input');
+  });
+
+  it('stays on the Input step while a run is in flight, then advances on success', async () => {
+    makeReadyModeA();
+    let resolveValidate: (v: ValidationResult) => void = () => {};
+    vi.mocked(validate).mockImplementation(
+      () => new Promise<ValidationResult>((resolve) => (resolveValidate = resolve)),
+    );
+
+    const pending = runValidation();
+    // Mid-run: the results store is 'running' but we have NOT navigated away from Input.
+    expect(useResultsStore.getState().status).toBe('running');
+    expect(useAppStore.getState().step).toBe('input');
+
+    resolveValidate(fakeResult);
+    await pending;
+    expect(useAppStore.getState().step).toBe('results');
   });
 
   it('is a no-op when the input is not ready', async () => {

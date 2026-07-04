@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useInputStore, selectValidationSummary } from '../../state/inputStore';
-import { RunValidationButton } from './RunValidationButton';
+import { Badge } from '../ui/Badge';
 
 const STATUS_ICON: Record<string, string> = {
   valid: '✓',
@@ -16,9 +16,9 @@ function statusColor(status: string): string {
 }
 
 /**
- * The Phase-1 deliverable: a live readiness panel. It lists every required (and every filled
- * optional) input with a valid/missing/invalid marker, surfaces the nested-case-control badge, and
- * shows a single "ready to run" / "needs attention" banner derived from the store selectors.
+ * A live readiness checklist: every required (and every filled optional) input with a
+ * valid/missing/invalid marker, plus the nested-case-control marker. The overall "ready to run" status and
+ * the Run button now live in the RunActionBar pinned to the bottom of the Input tab.
  */
 export function InputSummaryPanel() {
   // Subscribe to the whole (referentially-stable) store state and derive the summary via useMemo.
@@ -26,10 +26,6 @@ export function InputSummaryPanel() {
   // `useInputStore(selector)` would break zustand v5's snapshot-stability contract and loop forever.
   const state = useInputStore();
   const summary = useMemo(() => selectValidationSummary(state), [state]);
-
-  const attention = summary.items.filter(
-    (it) => (it.required && it.status !== 'valid') || it.status === 'invalid',
-  ).length;
 
   return (
     <section
@@ -42,20 +38,7 @@ export function InputSummaryPanel() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <h3 style={{ margin: 0, fontSize: 14 }}>Input summary</h3>
-        {summary.isNcc && (
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              padding: '1px 6px',
-              borderRadius: 999,
-              background: 'var(--app-accent)',
-              color: 'var(--app-accent-fg)',
-            }}
-          >
-            Nested case-control
-          </span>
-        )}
+        {summary.isNcc && <Badge tone="accent">Nested case-control</Badge>}
       </div>
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -71,7 +54,10 @@ export function InputSummaryPanel() {
               )}
             </div>
             {it.errors.map((msg, i) => (
-              <div key={`e${i}`} style={{ marginLeft: 22, fontSize: 12, color: 'var(--app-danger)' }}>
+              <div
+                key={`e${i}`}
+                style={{ marginLeft: 22, fontSize: 12, color: 'var(--app-danger)' }}
+              >
                 {msg}
               </div>
             ))}
@@ -83,23 +69,6 @@ export function InputSummaryPanel() {
           </li>
         ))}
       </ul>
-
-      <div
-        style={{
-          marginTop: 10,
-          paddingTop: 10,
-          borderTop: '1px solid var(--app-border)',
-          fontWeight: 600,
-          fontSize: 13,
-          color: summary.ready ? 'var(--app-accent)' : 'var(--app-muted)',
-        }}
-      >
-        {summary.ready
-          ? '✓ Ready to run validation'
-          : `${attention} item${attention === 1 ? '' : 's'} need attention`}
-      </div>
-
-      <RunValidationButton />
     </section>
   );
 }

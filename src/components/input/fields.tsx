@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { AgeSpecValue, RiskIntervalConfig } from '../../state/inputStore';
 
 const hintStyle: React.CSSProperties = { fontSize: 11, color: 'var(--app-muted)', marginTop: 2 };
@@ -29,6 +29,51 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   marginBottom: 4,
 };
+
+/**
+ * A free-text input for a list of numbers that keeps the raw text as local draft state. The previous
+ * approach made the input `value` the parsed-then-rejoined numbers, which erased any not-yet-valid
+ * keystroke — a lone "-", a trailing "." or "," — so negatives, decimals, and multi-value lists were
+ * impossible to type ("-" parsed to nothing and the field cleared). Here the typed text is the source of
+ * truth for display; we only re-sync it from `canonical` (the text form of the store value) when an
+ * EXTERNAL change (Reset, Load example) makes the typed numbers diverge from the store — never mid-typing.
+ * The parent still receives the parsed numbers via `onNumbers` on every change.
+ */
+function NumericTextInput({
+  id,
+  placeholder,
+  canonical,
+  onNumbers,
+  style,
+}: {
+  id?: string;
+  placeholder?: string;
+  canonical: string;
+  onNumbers: (nums: number[]) => void;
+  style?: React.CSSProperties;
+}) {
+  const [text, setText] = useState(canonical);
+
+  // Re-sync only when the store value (canonical) represents a DIFFERENT set of numbers than what's typed.
+  // Comparing the numeric forms (not raw strings) preserves in-progress input like "-", "1.", or "1, 2,".
+  useEffect(() => {
+    if (parseNumberList(text).join(', ') !== canonical) setText(canonical);
+  }, [canonical, text]);
+
+  return (
+    <input
+      id={id}
+      type="text"
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        onNumbers(parseNumberList(e.target.value));
+      }}
+      style={style ?? inputStyle}
+    />
+  );
+}
 
 export function TextField({
   label,
@@ -141,11 +186,10 @@ export function RiskIntervalControl({
         />
       )}
       {value.kind === 'custom' && (
-        <input
-          type="text"
+        <NumericTextInput
           placeholder="e.g. 5, 5, 10 — whole years, one per subject"
-          value={value.values.join(', ')}
-          onChange={(e) => onChange({ kind: 'custom', values: parseNumberList(e.target.value) })}
+          canonical={value.values.length ? value.values.join(', ') : ''}
+          onNumbers={(nums) => onChange({ kind: 'custom', values: nums })}
           style={{ ...inputStyle, marginTop: 6 }}
         />
       )}
@@ -173,16 +217,11 @@ export function NumericListField({
       <label htmlFor={id} style={labelStyle}>
         {label}
       </label>
-      <input
+      <NumericTextInput
         id={id}
-        type="text"
         placeholder={placeholder}
-        value={values?.join(', ') ?? ''}
-        onChange={(e) => {
-          const parsed = parseNumberList(e.target.value);
-          onChange(parsed.length ? parsed : null);
-        }}
-        style={inputStyle}
+        canonical={values && values.length ? values.join(', ') : ''}
+        onNumbers={(nums) => onChange(nums.length ? nums : null)}
       />
       {hint && <div style={hintStyle}>{hint}</div>}
     </div>
@@ -204,22 +243,19 @@ export function AgeSpecField({
   hint?: string;
 }) {
   const id = useId();
-  const text = value == null ? '' : Array.isArray(value) ? value.join(', ') : String(value);
+  const canonical = value == null ? '' : Array.isArray(value) ? value.join(', ') : String(value);
   return (
     <div style={{ marginBottom: 12 }}>
       <label htmlFor={id} style={labelStyle}>
         {label}
       </label>
-      <input
+      <NumericTextInput
         id={id}
-        type="text"
         placeholder={placeholder}
-        value={text}
-        onChange={(e) => {
-          const nums = parseNumberList(e.target.value);
-          onChange(nums.length === 0 ? null : nums.length === 1 ? nums[0] : nums);
-        }}
-        style={inputStyle}
+        canonical={canonical}
+        onNumbers={(nums) =>
+          onChange(nums.length === 0 ? null : nums.length === 1 ? nums[0] : nums)
+        }
       />
       {hint && <div style={hintStyle}>{hint}</div>}
     </div>
