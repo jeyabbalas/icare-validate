@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import type { GoodnessOfFitTest } from './icareTypes';
-import { formatNumber, formatCount, formatPValue, formatRange, formatCi, formatGof } from './format';
+import {
+  formatNumber,
+  formatCount,
+  formatPValue,
+  formatRange,
+  formatCi,
+  formatGof,
+  formatGofResult,
+} from './format';
 
 describe('formatNumber', () => {
   it('formats to the requested precision', () => {
@@ -87,5 +95,21 @@ describe('formatGof', () => {
   });
   it('guards a non-finite statistic', () => {
     expect(formatGof(gof(NaN, 10, NaN))).toBe('χ² — · df 10 · p —');
+  });
+});
+
+describe('formatGofResult', () => {
+  it('renders χ² / df / p from the flat recompute-engine fields', () => {
+    expect(formatGofResult({ chiSquare: 7.36, degreesOfFreedom: 10, pValue: 0.691 })).toBe(
+      'χ² 7.36 · df 10 · p 0.691',
+    );
+    expect(formatGofResult({ chiSquare: 5.15, degreesOfFreedom: 9, pValue: 0.821 })).toBe(
+      'χ² 5.15 · df 9 · p 0.821',
+    );
+  });
+  it('renders an undefined (NaN) GOF as em-dashes, keeping the real df', () => {
+    expect(formatGofResult({ chiSquare: NaN, degreesOfFreedom: 2, pValue: NaN })).toBe(
+      'χ² — · df 2 · p —',
+    );
   });
 });

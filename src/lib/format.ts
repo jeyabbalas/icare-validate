@@ -57,3 +57,17 @@ export function formatGof(g: GoodnessOfFitTest): string {
   const df = g.parameter?.degreesOfFreedom ?? EM_DASH;
   return `χ² ${chi} · df ${df} · p ${formatPValue(g.pValue)}`;
 }
+
+/**
+ * Same `χ² … · df … · p …` rendering for the recompute engine's FLAT `GofResult`
+ * ({ chiSquare, degreesOfFreedom, pValue }). Used by the calibration plots/tiles under interactive
+ * re-binning, where the goodness-of-fit is recomputed client-side rather than read from the SDK's
+ * nested shape. An undefined GOF carries NaN χ²/p, which the finite guards render as em-dashes.
+ */
+export function formatGofResult(g: {
+  chiSquare: number;
+  degreesOfFreedom: number;
+  pValue: number;
+}): string {
+  return `χ² ${formatNumber(g.chiSquare, 2)} · df ${g.degreesOfFreedom} · p ${formatPValue(g.pValue)}`;
+}
