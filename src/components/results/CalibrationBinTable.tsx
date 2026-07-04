@@ -78,6 +78,20 @@ function eoCell(bin: CalibrationBin): React.ReactNode {
   );
 }
 
+/**
+ * The group number with its risk-score (linear-predictor) interval beneath it, muted. Used only for the
+ * relative-risk scale: relative risk is monotonic in the linear predictor, so these LP-quantile bin
+ * boundaries map to clean, contiguous bands (unlike absolute risk, which isn't monotonic in the LP).
+ */
+function groupCell(bin: CalibrationBin): React.ReactNode {
+  return (
+    <>
+      <div>{bin.index + 1}</div>
+      <div style={{ color: 'var(--app-muted)', fontSize: 11, fontWeight: 400 }}>{bin.label}</div>
+    </>
+  );
+}
+
 function absoluteColumns(): Column[] {
   return [
     { header: 'Group', align: 'left', render: (b) => b.index + 1 },
@@ -107,7 +121,7 @@ function absoluteColumns(): Column[] {
 
 function relativeColumns(): Column[] {
   return [
-    { header: 'Group', align: 'left', render: (b) => b.index + 1 },
+    { header: 'Group', align: 'left', render: groupCell },
     { header: 'N', align: 'right', render: (b) => b.n.toLocaleString('en-US') },
     {
       header: 'Predicted RR',
@@ -170,6 +184,8 @@ export function CalibrationBinTable({ bins, scale, isNcc = false }: CalibrationB
       </table>
       <p style={note}>
         Groups run from the lowest to the highest predicted risk.
+        {scale === 'relative' &&
+          ' The bracket is each group’s risk-score (linear-predictor) interval.'}
         {isNcc && ' Observed risks and intervals are inverse-probability-weighted (nested case-control).'}
       </p>
     </div>

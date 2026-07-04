@@ -88,6 +88,23 @@ describe('ResultsPanel — absolute-risk calibration section (both fixtures)', (
   );
 });
 
+describe('ResultsPanel — relative-risk calibration section (both fixtures)', () => {
+  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])(
+    'renders the RR calibration figure caption, toggle, + per-bin table for %s',
+    (name) => {
+      seed(name);
+      const text = mount();
+      expect(text).toContain('ranks and spreads'); // figure caption
+      expect(text).toContain('Per-bin relative-risk calibration'); // table caption
+      expect(text).toContain('Predicted RR'); // table header
+      expect(text).toContain('Observed RR (95% CI)'); // table header
+      // linear/log axis toggle (default linear)
+      expect(text).toContain('Linear');
+      expect(text).toContain('Log');
+    },
+  );
+});
+
 describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
   it('shows raw counts, no nested-case-control badge, no weighted cohort', () => {
     seed('icare-lit-ge50');

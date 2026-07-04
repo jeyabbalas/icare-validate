@@ -108,4 +108,26 @@ describe('CalibrationBinTable — relative scale (Phase 9 reuse)', () => {
     expect(text).toContain('1.10'); // observed RR
     expect(text).toContain('0.80–1.40'); // observed RR CI
   });
+
+  it('annotates the Group cell + footnote with each bin’s risk-score interval', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'relative',
+        bins: [bin({ index: 0, label: '(0.5, 1.5]' })],
+      }),
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('(0.5, 1.5]'); // the LP interval beneath the group number
+    expect(text).toContain('risk-score (linear-predictor) interval'); // footnote explanation
+  });
+
+  it('does not annotate the Group cell on the absolute scale', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'absolute',
+        bins: [bin({ index: 0, label: '(0.5, 1.5]' })],
+      }),
+    );
+    expect(container.textContent ?? '').not.toContain('(0.5, 1.5]');
+  });
 });

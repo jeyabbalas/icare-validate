@@ -94,3 +94,15 @@ export function linspace(start: number, stop: number, num: number): Float64Array
   out[num - 1] = stop;
   return out;
 }
+
+/**
+ * Round up to a clean 1/2/5 × 10ⁿ ceiling, so a chart's axis-domain top and its ticks stay tidy. Shared by
+ * the calibration scatters (Phases 8–9) to pick a square axis maximum; `x ≤ 0` → 1.
+ */
+export function niceCeil(x: number): number {
+  if (x <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(x)));
+  const frac = x / pow;
+  const nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  return nice * pow;
+}

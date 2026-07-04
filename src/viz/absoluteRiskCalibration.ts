@@ -23,7 +23,7 @@
 //     those returns an HTML <figure> that can't export as one image. Colors arrive resolved to hex.
 
 import type * as PlotNS from '@observablehq/plot';
-import { extent } from '../math/numeric';
+import { extent, niceCeil } from '../math/numeric';
 import { formatNumber, formatPercent } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 
@@ -49,15 +49,6 @@ export interface AbsoluteRiskCalibrationData {
   points: CalibrationScatterPoint[];
   /** Shared upper bound for BOTH axes (percent), so the frame is square and the identity line is 45°. */
   domainMax: number;
-}
-
-/** Round up to a clean 1/2/5 × 10ⁿ ceiling, so the square domain top and its ticks are tidy. */
-function niceCeil(x: number): number {
-  if (x <= 0) return 1;
-  const pow = Math.pow(10, Math.floor(Math.log10(x)));
-  const frac = x / pow;
-  const nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
-  return nice * pow;
 }
 
 /**

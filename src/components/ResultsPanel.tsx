@@ -4,6 +4,7 @@ import type { ValidationResult } from '../lib/icareTypes';
 import { CohortSummaryPanel } from './results/CohortSummaryPanel';
 import { IncidenceRatesSection } from './results/IncidenceRatesSection';
 import { AbsoluteRiskCalibrationSection } from './results/AbsoluteRiskCalibrationSection';
+import { RelativeRiskCalibrationSection } from './results/RelativeRiskCalibrationSection';
 
 // Phase 6: the Results-step container. Guards the empty state, renders the page header (dataset / model /
 // interval + a nested-case-control badge and the "New validation" action), then the grouped cohort
@@ -86,6 +87,8 @@ export function ResultsPanel() {
       <IncidenceRatesSection incidence={normalized.incidence} isNcc={normalized.isNcc} />
 
       <AbsoluteRiskCalibrationSection result={result} normalized={normalized} />
+
+      <RelativeRiskCalibrationSection result={result} normalized={normalized} />
 
       {import.meta.env.DEV && <DevInspector result={result} />}
     </main>
