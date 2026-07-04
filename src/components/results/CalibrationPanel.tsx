@@ -3,6 +3,7 @@ import { cardStyle } from '../../viz/chartChrome';
 import { Metric } from './Metric';
 import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection';
 import { RelativeRiskCalibrationSection } from './RelativeRiskCalibrationSection';
+import { EoRatioSection } from './EoRatioSection';
 import { RebinControls } from './RebinControls';
 import { useRecomputedCalibration } from './useRecomputedCalibration';
 import type { GofResult } from '../../math/calibrationMath';
@@ -81,6 +82,7 @@ export function CalibrationPanel({
         <AbsoluteRiskCalibrationSection rc={rc} result={result} normalized={normalized} />
         <RelativeRiskCalibrationSection rc={rc} normalized={normalized} />
       </div>
+      <EoRatioSection rc={rc} />
     </section>
   );
 }

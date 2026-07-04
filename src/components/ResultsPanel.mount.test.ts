@@ -138,6 +138,12 @@ describe('ResultsPanel — unified calibration panel (both fixtures)', () => {
       expect(grid).not.toBeNull();
       expect(grid?.querySelectorAll('figure').length).toBe(2);
 
+      // The re-binning toolbar and the E/O-by-group figure live in the panel, outside the scatter grid.
+      expect(panel?.querySelector('.rebin-toolbar')).not.toBeNull();
+      const eo = panel?.querySelector('figure[aria-label="Expected / Observed by risk group"]');
+      expect(eo).not.toBeNull();
+      expect(eo?.closest('.cal-grid')).toBeNull();
+
       act(() => root.unmount());
     },
   );

@@ -26,7 +26,7 @@
 //     NO Plot title/caption/legend option (those return an HTML <figure> that can't export as one image).
 
 import type * as PlotNS from '@observablehq/plot';
-import { niceCeil } from '../math/numeric';
+import { niceCeil, logTicks } from '../math/numeric';
 import { formatNumber } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 
@@ -144,21 +144,6 @@ export interface RelativeRiskCalibrationChartOptions {
   colors: RelativeRiskCalibrationColors;
   width: number;
   ariaLabel?: string;
-}
-
-/** Symmetric 1-2-5 log ticks within `[1/M, M]`, always including 1 (e.g. M=5 → [0.2,0.5,1,2,5]). */
-function logTicks(m: number): number[] {
-  const ticks = new Set<number>([1]);
-  for (let decade = 1; decade <= m + 1e-9; decade *= 10) {
-    for (const base of [1, 2, 5]) {
-      const v = base * decade;
-      if (v <= m + 1e-9) {
-        ticks.add(v);
-        ticks.add(1 / v);
-      }
-    }
-  }
-  return [...ticks].sort((a, b) => a - b);
 }
 
 /**

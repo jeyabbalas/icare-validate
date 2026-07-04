@@ -106,3 +106,22 @@ export function niceCeil(x: number): number {
   const nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
   return nice * pow;
 }
+
+/**
+ * Symmetric 1-2-5 ticks within `[1/m, m]`, always including 1 — for a log axis centered on 1 (a ratio
+ * such as relative risk or Expected/Observed). E.g. `m = 5` → `[0.2, 0.5, 1, 2, 5]`. Shared by the
+ * relative-risk calibration (Phase 9) and the E/O-by-group (Phase 12) plots.
+ */
+export function logTicks(m: number): number[] {
+  const ticks = new Set<number>([1]);
+  for (let decade = 1; decade <= m + 1e-9; decade *= 10) {
+    for (const base of [1, 2, 5]) {
+      const v = base * decade;
+      if (v <= m + 1e-9) {
+        ticks.add(v);
+        ticks.add(1 / v);
+      }
+    }
+  }
+  return [...ticks].sort((a, b) => a - b);
+}
