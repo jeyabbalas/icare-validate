@@ -72,6 +72,17 @@ export const MODE_A_REQUIRED: ModelFileKey[] = [
   'applyCovariateProfile',
 ];
 
+/**
+ * Whether the inputs are complete enough to build a `validateAbsoluteRiskModel` call — the gate for the
+ * "Code" tab (which mirrors `buildValidateOptions`). Requires a valid study file, plus the Mode-A model
+ * files in Mode A. Used by the Stepper (tab enablement) and the Code panel (empty-state guard).
+ */
+export function canBuildValidateOptions(input: InputState): boolean {
+  if (!slotValid(input.study)) return false;
+  if (input.mode === 'A') return MODE_A_REQUIRED.every((k) => slotValid(input.modelFiles[k]));
+  return true;
+}
+
 function emptyModelFiles(): Record<ModelFileKey, FileSlot> {
   return Object.fromEntries(MODEL_FILE_KEYS.map((k) => [k, emptySlot()])) as Record<
     ModelFileKey,
@@ -397,8 +408,10 @@ function referencePopulationItem(s: InputState): ValidationSummaryItem | null {
     const p = s.referencePredictedRisks.values ?? [];
     const l = s.referenceLinearPredictors.values ?? [];
     if (p.length === 0 && l.length === 0) return null;
-    if ((p.length > 0) !== (l.length > 0)) {
-      warnings.push('Provide both reference predicted-risk and linear-predictor arrays, or neither.');
+    if (p.length > 0 !== l.length > 0) {
+      warnings.push(
+        'Provide both reference predicted-risk and linear-predictor arrays, or neither.',
+      );
     } else if (p.length !== l.length) {
       warnings.push(`Reference arrays differ in length (${p.length} vs ${l.length}).`);
     }
@@ -453,7 +466,8 @@ function applyCrossFileChecks(items: ValidationSummaryItem[], s: InputState): vo
     const prItem = byKey.get('predictedRiskColumn');
     if (pr && prItem) {
       const nonNumeric = pr.total - pr.numeric;
-      if (nonNumeric > 0) prItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
+      if (nonNumeric > 0)
+        prItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
       if (pr.min != null && pr.max != null && (pr.min < 0 || pr.max > 1)) {
         prItem.warnings.push(
           `Predicted absolute risks should lie in [0, 1] (found ${pr.min} to ${pr.max}).`,
@@ -464,7 +478,8 @@ function applyCrossFileChecks(items: ValidationSummaryItem[], s: InputState): vo
     const lpItem = byKey.get('linearPredictorColumn');
     if (lp && lpItem) {
       const nonNumeric = lp.total - lp.numeric;
-      if (nonNumeric > 0) lpItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
+      if (nonNumeric > 0)
+        lpItem.warnings.push(`${nonNumeric} value(s) are non-numeric or missing.`);
     }
   }
 
@@ -566,7 +581,12 @@ export function selectValidationSummary(s: InputState): ValidationSummary {
     const rates = s.modelFiles.modelDiseaseIncidenceRates;
     if (slotFilled(rates)) {
       items.push(
-        slotItem('modelDiseaseIncidenceRates', 'Disease incidence rates (population)', false, rates),
+        slotItem(
+          'modelDiseaseIncidenceRates',
+          'Disease incidence rates (population)',
+          false,
+          rates,
+        ),
       );
     }
   }

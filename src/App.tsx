@@ -3,6 +3,7 @@ import { AppHeader } from './components/AppHeader';
 import { Stepper } from './components/Stepper';
 import { InputBuilder } from './components/input/InputBuilder';
 import { ResultsPanel } from './components/ResultsPanel';
+import { CodePanel } from './components/code/CodePanel';
 import { ensureLoaded } from './services/icareService';
 import { useAppStore } from './state/appStore';
 
@@ -23,7 +24,7 @@ export default function App() {
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: 16 }}>
       <AppHeader />
       <Stepper />
-      {step === 'input' ? <InputBuilder /> : <ResultsPanel />}
+      {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
     </div>
   );
 }

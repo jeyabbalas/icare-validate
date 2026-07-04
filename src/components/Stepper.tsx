@@ -1,4 +1,5 @@
 import { useAppStore, type Step } from '../state/appStore';
+import { canBuildValidateOptions, useInputStore } from '../state/inputStore';
 import { useResultsStore } from '../state/resultsStore';
 
 // The app's two top-level views: assemble inputs, then read results. Rendered as prominent underline tabs
@@ -8,6 +9,7 @@ import { useResultsStore } from '../state/resultsStore';
 const STEPS: { id: Step; label: string }[] = [
   { id: 'input', label: 'Input' },
   { id: 'results', label: 'Results' },
+  { id: 'code', label: 'Code' },
 ];
 
 const navStyle: React.CSSProperties = {
@@ -35,12 +37,15 @@ export function Stepper() {
   // Results is reachable only once a validation has produced one. During a run we stay on Input (the
   // RunActionBar shows progress and auto-advances on success), so the in-flight state no longer unlocks it.
   const hasResult = useResultsStore((s) => s.result !== null);
+  // Code is reachable as soon as the inputs can build a validation call (pre-run) — the code is a pure
+  // function of the inputs, not the results.
+  const canCode = useInputStore(canBuildValidateOptions);
 
   return (
     <nav aria-label="Views" style={navStyle}>
       {STEPS.map((s) => {
         const active = step === s.id;
-        const disabled = s.id === 'results' && !hasResult;
+        const disabled = (s.id === 'results' && !hasResult) || (s.id === 'code' && !canCode);
         return (
           <button
             key={s.id}

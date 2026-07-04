@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribe as subscribeIcare, type IcareStatus } from '../services/icareService';
 
-export type Step = 'input' | 'results';
+export type Step = 'input' | 'results' | 'code';
 export type Theme = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'icv-theme';
