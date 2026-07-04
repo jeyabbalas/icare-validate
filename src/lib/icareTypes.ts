@@ -34,4 +34,4 @@ export type {
   LogOddsRatiosInput,
 } from 'wasm-icare';
 
-export { PYICARE_WHEEL_FILENAME, PYICARE_WHEEL_PATH, PYODIDE_VERSION } from 'wasm-icare';
+export { PYICARE_VERSION, PYICARE_WHEEL_FILENAME, PYICARE_WHEEL_PATH, PYODIDE_VERSION } from 'wasm-icare';

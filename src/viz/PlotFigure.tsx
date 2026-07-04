@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { downloadPng, downloadSvg } from '../lib/figureExport';
+import { registerFigure, unregisterFigure } from './figureRegistry';
 
 // Generic host for an Observable Plot figure — the app's shared chart wrapper (later viz phases reuse
 // it). Follows the house imperative-lib pattern (cf. Katex.tsx / DataTablePanel.tsx): the ~150 KB Plot
@@ -74,9 +75,22 @@ export function PlotFigure({ render, deps, exportName, pngBackground, toolbarExt
   const renderRef = useRef(render);
   renderRef.current = render; // latest closure, captured before the effects run
 
+  const bgRef = useRef(pngBackground);
+  bgRef.current = pngBackground; // latest backdrop, captured before the effects run (like renderRef)
+
   const [width, setWidth] = useState(0);
   const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Publish this figure to the module registry so the global "Download all" (Phase 13) can reach its
+  // live <svg>. Kept in its OWN effect (not the draw effect, which nulls svgRef in cleanup on every
+  // width/theme change) so registration is stable for the figure's lifetime; the getters read the live
+  // refs, so a redraw needs no re-registration.
+  useEffect(() => {
+    const entry = { getSvg: () => svgRef.current, getBackground: () => bgRef.current };
+    registerFigure(exportName, entry);
+    return () => unregisterFigure(exportName, entry);
+  }, [exportName]);
 
   // Responsive width: measure the host and re-render on meaningful size changes.
   useEffect(() => {
