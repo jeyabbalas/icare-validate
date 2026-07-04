@@ -46,6 +46,11 @@ export function formatRange(min: number, max: number, digits = 1): string {
   return `${trimFixed(min, digits)}${EN_DASH}${trimFixed(max, digits)}`;
 }
 
+/** `95% CI lo–hi` (en-dash), each endpoint fixed-decimal and finite-guarded → `—`. */
+export function formatCi(lower: number, upper: number, digits = 3): string {
+  return `95% CI ${formatNumber(lower, digits)}${EN_DASH}${formatNumber(upper, digits)}`;
+}
+
 /** SDK goodness-of-fit test → `χ² … · df … · p …`, reading the nested SDK fields. */
 export function formatGof(g: GoodnessOfFitTest): string {
   const chi = formatNumber(g.statistic?.chiSquare, 2);

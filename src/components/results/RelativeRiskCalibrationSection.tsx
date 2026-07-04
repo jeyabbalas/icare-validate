@@ -1,16 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../../state/appStore';
-import { useBinSettingsStore } from '../../state/binSettingsStore';
 import { PlotFigure } from '../../viz/PlotFigure';
 import {
   buildRelativeRiskCalibration,
   renderRelativeRiskCalibrationChart,
 } from '../../viz/relativeRiskCalibration';
 import { OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
-import { cardStyle, captionStyle, cssVar, miniToggle } from '../../viz/chartChrome';
-import { recomputeCalibration } from '../../math/calibrationMath';
+import { captionStyle, cssVar, miniToggle } from '../../viz/chartChrome';
 import { formatGof } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
+import type { RecomputedCalibration } from '../../math/calibrationMath';
 import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 
@@ -18,17 +17,16 @@ import type { NormalizedResult } from '../../services/resultNormalizer';
 // RELATIVE risk per risk group (both mean-normalized to a cohort average of 1), with the perfect-calibration
 // identity line and a faint RR=1 population-average crosshair. Where the absolute-risk plot (Phase 8) asks
 // whether the risk LEVEL is right, this asks whether the model RANKS/SPREADS risk correctly. Fed by the same
-// Phase-5 recompute engine (LP-decile bins) so Phase-12 re-binning is a no-re-run update; resolves the theme
-// colors to hex (Plot bakes colors in), reads the overall RR goodness-of-fit from the SDK scalar (matches the
-// summary panel verbatim), and offers a linear/log axis toggle (relative risk is multiplicative).
+// Phase-5 recompute (LP-decile bins) — CalibrationPanel computes `rc` once and shares it — resolves the theme
+// colors to hex (Plot bakes colors in), reads the overall RR goodness-of-fit from the SDK scalar, and offers a
+// linear/log axis toggle (relative risk is multiplicative). Renders as a borderless `.cal-col` grid column.
 
-// Bottom margin dropped: ResultsPanel's calibration grid owns the spacing (gap) between the two cards.
-const calibrationCard: React.CSSProperties = { ...cardStyle, maxWidth: 560, margin: '0 auto' };
 const TITLE = 'Relative-risk calibration';
 
 type AxisScale = 'linear' | 'log';
 
 export interface RelativeRiskCalibrationSectionProps {
+  rc: RecomputedCalibration;
   result: ValidationResult;
   normalized: NormalizedResult;
 }
@@ -54,22 +52,15 @@ function ScaleToggle({ scale, onChange }: { scale: AxisScale; onChange: (s: Axis
 }
 
 export function RelativeRiskCalibrationSection({
+  rc,
   result,
   normalized,
 }: RelativeRiskCalibrationSectionProps) {
   const theme = useAppStore((s) => s.theme);
-  const numberOfPercentiles = useBinSettingsStore((s) => s.numberOfPercentiles);
   const [axisScale, setAxisScale] = useState<AxisScale>('linear');
 
-  const ps = normalized.perSubject;
   const isNcc = normalized.isNcc;
 
-  // Recompute per-bin calibration on the LINEAR-PREDICTOR scale (the SDK's default) — reproduces
-  // result.categorySpecificCalibration at the default deciles and re-bins instantly later.
-  const rc = useMemo(
-    () => recomputeCalibration(ps, isNcc, { scale: 'linear-predictor', numberOfPercentiles }),
-    [ps, isNcc, numberOfPercentiles],
-  );
   const { points, linearMax, logBound } = useMemo(() => buildRelativeRiskCalibration(rc), [rc]);
   const hasData = points.length > 0;
 
@@ -78,7 +69,7 @@ export function RelativeRiskCalibrationSection({
   const surface = cssVar('--app-surface', '#f8fafc');
   const observedColor = pickSeriesColor(OBSERVED_COLOR, theme);
 
-  // Overall relative-risk goodness-of-fit, straight off the SDK result (matches the cohort-summary panel, and
+  // Overall relative-risk goodness-of-fit, straight off the SDK result (matches the calibration header, and
   // equals the engine's value at the default deciles). There is NO relative-risk "E/O-in-the-large" scalar.
   const annotationLines = [`RR GOF ${formatGof(result.calibration.relativeRisk)}`];
 
@@ -104,15 +95,15 @@ export function RelativeRiskCalibrationSection({
     `Relative-risk calibration asks whether the model ranks and spreads risk correctly: does the group it ` +
     `calls twice the average really run twice the risk? A model can sit on the dotted identity line here ` +
     `(good risk stratification) while still systematically over- or under-estimating absolute risk (the ` +
-    `plot above). The faint RR = 1 crosshair marks the population-average stratum — below-average groups ` +
-    `fall in the lower-left, above-average in the upper-right. Use the toolbar toggle to switch between ` +
-    `linear and log (multiplicative) axes.` +
+    `absolute-risk plot). The faint RR = 1 crosshair marks the population-average stratum — below-average ` +
+    `groups fall in the lower-left, above-average in the upper-right. Use the toolbar toggle to switch ` +
+    `between linear and log (multiplicative) axes.` +
     (isNcc
       ? ' Observed relative risks and intervals are inverse-probability-weighted (nested case-control design).'
       : '');
 
   return (
-    <figure style={calibrationCard} aria-label={TITLE}>
+    <figure className="cal-col" aria-label={TITLE}>
       <PlotFigure
         render={render}
         deps={[points, linearMax, logBound, theme, axisScale]}

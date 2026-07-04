@@ -75,6 +75,42 @@ a {
   color: var(--app-fg);
 }
 
+/* Calibration section: two column-aligned sub-panels (absolute | relative). Stacks to one column on
+   narrow screens; at >=860px the two columns share row tracks (plot / caption / table) via `subgrid`,
+   so the taller caption sets a shared caption row and BOTH bin-tables start at the same y — the
+   whitespace under the shorter caption appears automatically. `minmax(0, 1fr)` keeps the two columns
+   exactly equal regardless of each table's min-content width (the table keeps its own overflow-x
+   scroll instead of blowing out its column). Degrades gracefully to independent columns without subgrid. */
+.cal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.cal-col {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+  min-width: 0;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+@media (min-width: 860px) {
+  .cal-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    align-items: start;
+  }
+
+  .cal-col {
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    max-width: none;
+    margin: 0;
+  }
+}
+
 /* Indeterminate spinner for the Validate step (the SDK exposes no boot/compute progress). */
 @keyframes icv-spin {
   to {

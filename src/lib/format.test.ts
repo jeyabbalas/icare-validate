@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { GoodnessOfFitTest } from './icareTypes';
-import { formatNumber, formatCount, formatPValue, formatRange, formatGof } from './format';
+import { formatNumber, formatCount, formatPValue, formatRange, formatCi, formatGof } from './format';
 
 describe('formatNumber', () => {
   it('formats to the requested precision', () => {
@@ -59,6 +59,16 @@ describe('formatRange', () => {
   });
   it('guards non-finite endpoints', () => {
     expect(formatRange(NaN, 5, 1)).toBe('—–5');
+  });
+});
+
+describe('formatCi', () => {
+  it('prefixes "95% CI" and joins endpoints with an en-dash at the requested precision', () => {
+    expect(formatCi(0.9, 1.01)).toBe('95% CI 0.900–1.010');
+    expect(formatCi(0.5678, 1.111, 4)).toBe('95% CI 0.5678–1.1110');
+  });
+  it('guards a non-finite endpoint with an em-dash', () => {
+    expect(formatCi(NaN, 1.2)).toBe('95% CI —–1.200');
   });
 });
 

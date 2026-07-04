@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
-import type { GoodnessOfFitTest, ValidationResult } from '../../lib/icareTypes';
+import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 import { computeCohortSummary } from '../../lib/cohortSummary';
-import { formatNumber, formatCount, formatRange, formatGof } from '../../lib/format';
+import { formatNumber, formatCount, formatRange, formatCi } from '../../lib/format';
 import { Metric } from './Metric';
 
 // Phase 6: the cohort summary a clinician reads first — py-icare's demo notebook (cell 50) text panel,
-// reorganized into three grouped sections. Pure/presentational: `ResultsPanel` reads the store, guards the
-// empty state, and passes `result` (SDK scalars, verbatim, at the default deciles) + `normalized`
-// (per-subject arrays). Descriptive stats are derived unweighted (faithful to py-icare); a nested
-// case-control study additionally surfaces the design-weighted "effective cohort" on each card's sub-line.
+// reorganized into grouped sections. Pure/presentational: `ResultsPanel` reads the store, guards the empty
+// state, and passes `result` (SDK scalars, verbatim, at the default deciles) + `normalized` (per-subject
+// arrays). Descriptive stats are derived unweighted (faithful to py-icare); a nested case-control study
+// additionally surfaces the design-weighted "effective cohort" on each card's sub-line. Calibration (E/O +
+// its 95% CI, and the goodness-of-fit tests) now lives in the dedicated CalibrationPanel, so this panel is
+// Cohort + Discrimination.
 
 const section: React.CSSProperties = {
   border: '1px solid var(--app-border)',
@@ -28,19 +30,6 @@ const sectionTitle: React.CSSProperties = {
 };
 const row: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 10 };
 
-// en-dash CI, each endpoint finite-guarded to an em-dash
-function ci(lower: number, upper: number, digits = 3): string {
-  return `95% CI ${formatNumber(lower, digits)}–${formatNumber(upper, digits)}`;
-}
-
-function GofLine({ label, g }: { label: string; g: GoodnessOfFitTest }) {
-  return (
-    <div>
-      <strong style={{ color: 'var(--app-fg)' }}>{label}:</strong> {formatGof(g)}
-    </div>
-  );
-}
-
 export function CohortSummaryPanel({
   result,
   normalized,
@@ -52,7 +41,7 @@ export function CohortSummaryPanel({
   const isNcc = normalized.isNcc;
   const s = useMemo(() => computeCohortSummary(ps, isNcc), [ps, isNcc]);
   const w = s.weighted;
-  const { auc, brierScore, expectedByObservedRatio, calibration } = result;
+  const { auc, brierScore } = result;
 
   return (
     <>
@@ -93,39 +82,13 @@ export function CohortSummaryPanel({
       </section>
 
       <section style={section}>
-        <h3 style={sectionTitle}>Calibration</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start' }}>
-          <div style={row}>
-            <Metric
-              label="E / O ratio"
-              value={formatNumber(expectedByObservedRatio.ratio)}
-              sub={ci(expectedByObservedRatio.lowerCi, expectedByObservedRatio.upperCi)}
-            />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              fontSize: 12,
-              color: 'var(--app-muted)',
-              paddingTop: 4,
-            }}
-          >
-            <GofLine label="Hosmer–Lemeshow (absolute risk)" g={calibration.absoluteRisk} />
-            <GofLine label="Relative-risk GOF" g={calibration.relativeRisk} />
-          </div>
-        </div>
-      </section>
-
-      <section style={section}>
         <h3 style={sectionTitle}>Discrimination</h3>
         <div style={row}>
-          <Metric label="AUC" value={formatNumber(auc.auc)} sub={ci(auc.lowerCi, auc.upperCi)} />
+          <Metric label="AUC" value={formatNumber(auc.auc)} sub={formatCi(auc.lowerCi, auc.upperCi)} />
           <Metric
             label="Brier score"
             value={formatNumber(brierScore.brierScore, 4)}
-            sub={ci(brierScore.lowerCi, brierScore.upperCi, 4)}
+            sub={formatCi(brierScore.lowerCi, brierScore.upperCi, 4)}
           />
         </div>
       </section>

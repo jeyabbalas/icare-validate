@@ -3,8 +3,7 @@ import { useResultsStore } from '../state/resultsStore';
 import type { ValidationResult } from '../lib/icareTypes';
 import { CohortSummaryPanel } from './results/CohortSummaryPanel';
 import { IncidenceRatesSection } from './results/IncidenceRatesSection';
-import { AbsoluteRiskCalibrationSection } from './results/AbsoluteRiskCalibrationSection';
-import { RelativeRiskCalibrationSection } from './results/RelativeRiskCalibrationSection';
+import { CalibrationPanel } from './results/CalibrationPanel';
 
 // Phase 6: the Results-step container. Guards the empty state, renders the page header (dataset / model /
 // interval + a nested-case-control badge and the "New validation" action), then the grouped cohort
@@ -34,17 +33,6 @@ const badge: React.CSSProperties = {
   background: 'var(--app-surface-2)',
   color: 'var(--app-muted)',
   whiteSpace: 'nowrap',
-};
-// The two calibration scatters (absolute + relative) sit side-by-side when the viewport affords two
-// ≥460px squares, and responsively collapse to a single stacked column on narrower screens. An auto-fit
-// grid does this with no media query (consistent with the app's inline-style approach); `min(100%, 460px)`
-// keeps the track from overflowing very narrow viewports.
-const calibrationGrid: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 460px), 1fr))',
-  gap: 16,
-  alignItems: 'start',
-  margin: '0 0 16px',
 };
 
 export function ResultsPanel() {
@@ -97,10 +85,7 @@ export function ResultsPanel() {
 
       <IncidenceRatesSection incidence={normalized.incidence} isNcc={normalized.isNcc} />
 
-      <div style={calibrationGrid}>
-        <AbsoluteRiskCalibrationSection result={result} normalized={normalized} />
-        <RelativeRiskCalibrationSection result={result} normalized={normalized} />
-      </div>
+      <CalibrationPanel result={result} normalized={normalized} />
 
       {import.meta.env.DEV && <DevInspector result={result} />}
     </main>

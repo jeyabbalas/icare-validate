@@ -57,7 +57,7 @@ describe('ResultsPanel — grouped summary (both fixtures)', () => {
   it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('renders every group for %s', (name) => {
     seed(name);
     const text = mount();
-    // three groups
+    // Cohort + Discrimination are the summary groups; Calibration is now its own panel below.
     expect(text).toContain('Cohort');
     expect(text).toContain('Calibration');
     expect(text).toContain('Discrimination');
@@ -105,17 +105,30 @@ describe('ResultsPanel — relative-risk calibration section (both fixtures)', (
   );
 });
 
-describe('ResultsPanel — calibration layout (responsive grid)', () => {
-  it('wraps the two calibration scatters in an auto-fit grid that collapses on narrow screens', () => {
-    seed('bpc3-covariate');
-    const root = createRoot(container);
-    act(() => root.render(createElement(ResultsPanel)));
-    const grid = container.querySelector('[style*="auto-fit"]');
-    expect(grid).not.toBeNull();
-    // Both calibration figures live inside that one grid (the incidence figure is outside it).
-    expect(grid?.querySelectorAll('figure').length).toBe(2);
-    act(() => root.unmount());
-  });
+describe('ResultsPanel — unified calibration panel (both fixtures)', () => {
+  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])(
+    'wraps the overall stats + both aligned scatters in one Calibration container for %s',
+    (name) => {
+      seed(name);
+      const root = createRoot(container);
+      act(() => root.render(createElement(ResultsPanel)));
+
+      const panel = container.querySelector('section[aria-label="Calibration"]');
+      expect(panel).not.toBeNull();
+      // Overall E/O-in-the-large + its 95% CI, and both goodness-of-fit lines, moved into the panel header.
+      expect(panel?.textContent).toContain('E / O ratio');
+      expect(panel?.textContent).toContain('95% CI');
+      expect(panel?.textContent).toContain('Hosmer–Lemeshow (absolute risk)');
+      expect(panel?.textContent).toContain('Relative-risk GOF');
+
+      // Both calibration scatters share the one responsive grid (the incidence figure sits outside it).
+      const grid = panel?.querySelector('.cal-grid');
+      expect(grid).not.toBeNull();
+      expect(grid?.querySelectorAll('figure').length).toBe(2);
+
+      act(() => root.unmount());
+    },
+  );
 });
 
 describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
