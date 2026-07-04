@@ -1,21 +1,22 @@
-import { useMemo } from 'react';
-import { useBinSettingsStore } from '../../state/binSettingsStore';
-import { recomputeCalibration } from '../../math/calibrationMath';
 import { formatNumber, formatPValue, formatCi } from '../../lib/format';
 import { cardStyle } from '../../viz/chartChrome';
 import { Metric } from './Metric';
 import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection';
 import { RelativeRiskCalibrationSection } from './RelativeRiskCalibrationSection';
-import type { GoodnessOfFitTest, ValidationResult } from '../../lib/icareTypes';
+import { useRecomputedCalibration } from './useRecomputedCalibration';
+import type { GofResult } from '../../math/calibrationMath';
+import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 
 // The unified, full-width Calibration container. Supersedes the two loose calibration cards (which rendered
 // at unequal widths and with vertically mis-aligned bin-tables) and absorbs the overall calibration stats
 // that used to live in the cohort-summary panel — shown here as three matching Metric tiles: E/O-in-the-large
 // + its 95% CI, and the two goodness-of-fit tests (Hosmer–Lemeshow for absolute risk, GOF for relative risk).
-// The Phase-5 recompute runs ONCE here (both sub-panels bin identically on the linear-predictor scale) and the
-// same `rc` is handed to each, so the absolute and relative scatters and their per-bin tables are guaranteed to
-// share one set of bins. The two sub-panels sit in a `.cal-grid` (see index.css): equal-width columns whose
+// The Phase-5 recompute runs ONCE via `useRecomputedCalibration` and the same `rc` is handed to each sub-panel,
+// so the absolute and relative scatters and their per-bin tables always share one set of bins. Phase 12 drives
+// the bins from the results-scoped `rebinStore` (interactive re-binning, no SDK re-run), so the two GOF tiles
+// re-source from `rc` and move with the bins; E/O-in-the-large stays the SDK scalar (Σpredicted/Σobserved,
+// binning-invariant). The two sub-panels sit in a `.cal-grid` (see index.css): equal-width columns whose
 // plot / caption / table rows align via CSS subgrid on wide viewports, stacking to one column on narrow ones.
 
 const card: React.CSSProperties = { ...cardStyle, margin: '0 0 16px' };
@@ -34,13 +35,17 @@ const headerRow: React.CSSProperties = {
   marginBottom: 16,
 };
 
-/** One overall goodness-of-fit test as a Metric tile: the p-value as the headline, χ² · df as the sub-line. */
-function gofTile(label: string, g: GoodnessOfFitTest) {
+/**
+ * One recomputed goodness-of-fit test as a Metric tile: the p-value as the headline, χ² · df as the
+ * sub-line. Reads the engine's FLAT GofResult; an undefined GOF (an empty/degenerate bin makes χ² NaN)
+ * shows an em-dash headline while still reporting its df.
+ */
+function gofTile(label: string, g: GofResult) {
   return (
     <Metric
       label={label}
-      value={`p ${formatPValue(g.pValue)}`}
-      sub={`χ² ${formatNumber(g.statistic?.chiSquare, 2)} · df ${g.parameter?.degreesOfFreedom ?? '—'}`}
+      value={g.defined ? `p ${formatPValue(g.pValue)}` : '—'}
+      sub={`χ² ${formatNumber(g.chiSquare, 2)} · df ${g.degreesOfFreedom}`}
     />
   );
 }
@@ -52,18 +57,9 @@ export function CalibrationPanel({
   result: ValidationResult;
   normalized: NormalizedResult;
 }) {
-  const numberOfPercentiles = useBinSettingsStore((s) => s.numberOfPercentiles);
-
-  // One recompute for both sub-panels (identical LP-decile bins) — reproduces
-  // result.categorySpecificCalibration at the default deciles and re-bins instantly in Phase 12.
-  const rc = useMemo(
-    () =>
-      recomputeCalibration(normalized.perSubject, normalized.isNcc, {
-        scale: 'linear-predictor',
-        numberOfPercentiles,
-      }),
-    [normalized.perSubject, normalized.isNcc, numberOfPercentiles],
-  );
+  // One recompute for both sub-panels, driven by the results-scoped rebinStore (severs the old live
+  // binSettingsStore read, which let a post-run input-config edit silently re-bin the results).
+  const rc = useRecomputedCalibration(normalized);
 
   const eo = result.expectedByObservedRatio;
 
@@ -76,12 +72,12 @@ export function CalibrationPanel({
           value={formatNumber(eo.ratio)}
           sub={formatCi(eo.lowerCi, eo.upperCi)}
         />
-        {gofTile('Hosmer–Lemeshow', result.calibration.absoluteRisk)}
-        {gofTile('Relative-risk GOF', result.calibration.relativeRisk)}
+        {gofTile('Hosmer–Lemeshow', rc.absoluteRiskGof)}
+        {gofTile('Relative-risk GOF', rc.relativeRiskGof)}
       </div>
       <div className="cal-grid">
         <AbsoluteRiskCalibrationSection rc={rc} result={result} normalized={normalized} />
-        <RelativeRiskCalibrationSection rc={rc} result={result} normalized={normalized} />
+        <RelativeRiskCalibrationSection rc={rc} normalized={normalized} />
       </div>
     </section>
   );

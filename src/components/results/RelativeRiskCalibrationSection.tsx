@@ -7,10 +7,9 @@ import {
 } from '../../viz/relativeRiskCalibration';
 import { OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
 import { captionStyle, cssVar, miniToggle } from '../../viz/chartChrome';
-import { formatGof } from '../../lib/format';
+import { formatGofResult } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
 import type { RecomputedCalibration } from '../../math/calibrationMath';
-import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 
 // Results-step calibration viz #3 (Phase 9): the relative-risk calibration scatter — predicted vs observed
@@ -27,7 +26,6 @@ type AxisScale = 'linear' | 'log';
 
 export interface RelativeRiskCalibrationSectionProps {
   rc: RecomputedCalibration;
-  result: ValidationResult;
   normalized: NormalizedResult;
 }
 
@@ -53,7 +51,6 @@ function ScaleToggle({ scale, onChange }: { scale: AxisScale; onChange: (s: Axis
 
 export function RelativeRiskCalibrationSection({
   rc,
-  result,
   normalized,
 }: RelativeRiskCalibrationSectionProps) {
   const theme = useAppStore((s) => s.theme);
@@ -69,9 +66,9 @@ export function RelativeRiskCalibrationSection({
   const surface = cssVar('--app-surface', '#f8fafc');
   const observedColor = pickSeriesColor(OBSERVED_COLOR, theme);
 
-  // Overall relative-risk goodness-of-fit, straight off the SDK result (matches the calibration header, and
-  // equals the engine's value at the default deciles). There is NO relative-risk "E/O-in-the-large" scalar.
-  const annotationLines = [`RR GOF ${formatGof(result.calibration.relativeRisk)}`];
+  // Relative-risk goodness-of-fit for THIS plot's bins, from the recompute engine so it moves with
+  // interactive re-binning (equals the SDK value at the default deciles). There is no RR "E/O-in-the-large".
+  const annotationLines = [`RR GOF ${formatGofResult(rc.relativeRiskGof)}`];
 
   const render = (Plot: typeof import('@observablehq/plot'), ctx: { width: number }) =>
     !hasData
@@ -88,9 +85,13 @@ export function RelativeRiskCalibrationSection({
           width: ctx.width,
         });
 
+  const binnedBy =
+    rc.scale === 'absolute-risk'
+      ? 'predicted absolute risk'
+      : "the model's risk score (linear predictor)";
   const caption =
-    `Each marker is one of ${rc.nBins} risk groups (quantiles of the model's risk score, i.e. its linear ` +
-    `predictor): the group's mean predicted relative risk (x) versus its observed relative risk (y) — both ` +
+    `Each marker is one of ${rc.nBins} risk groups (binned by ${binnedBy}): the group's mean predicted ` +
+    `relative risk (x) versus its observed relative risk (y) — both ` +
     `normalized so the cohort average is 1 — with 95% confidence intervals on the observed value. ` +
     `Relative-risk calibration asks whether the model ranks and spreads risk correctly: does the group it ` +
     `calls twice the average really run twice the risk? A model can sit on the dotted identity line here ` +
@@ -112,7 +113,12 @@ export function RelativeRiskCalibrationSection({
         toolbarExtras={<ScaleToggle scale={axisScale} onChange={setAxisScale} />}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>
-      <CalibrationBinTable bins={rc.bins} scale="relative" isNcc={isNcc} />
+      <CalibrationBinTable
+        bins={rc.bins}
+        scale="relative"
+        isNcc={isNcc}
+        boundaryUnit={rc.scale === 'absolute-risk' ? 'percent' : 'lp'}
+      />
     </figure>
   );
 }

@@ -7,7 +7,7 @@ import {
 } from '../../viz/absoluteRiskCalibration';
 import { OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
 import { captionStyle, cssVar } from '../../viz/chartChrome';
-import { formatGof, formatNumber } from '../../lib/format';
+import { formatGofResult, formatNumber } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
 import type { RecomputedCalibration } from '../../math/calibrationMath';
 import type { ValidationResult } from '../../lib/icareTypes';
@@ -44,12 +44,12 @@ export function AbsoluteRiskCalibrationSection({
   const surface = cssVar('--app-surface', '#f8fafc');
   const observedColor = pickSeriesColor(OBSERVED_COLOR, theme);
 
-  // Overall calibration read straight off the SDK result (matches the calibration header, and equals the
-  // engine's values at the default deciles). E/O = calibration-in-the-large; H–L = the formal
-  // goodness-of-fit test for this very plot.
+  // E/O = calibration-in-the-large, read straight off the SDK scalar — it's Σpredicted/Σobserved over all
+  // subjects and so is binning-invariant. H–L is the goodness-of-fit for THIS plot's bins, so it comes from
+  // the recompute engine and moves with interactive re-binning (equals the SDK value at the default deciles).
   const annotationLines = [
     `E/O ${formatNumber(result.expectedByObservedRatio.ratio, 2)}`,
-    `H–L ${formatGof(result.calibration.absoluteRisk)}`,
+    `H–L ${formatGofResult(rc.absoluteRiskGof)}`,
   ];
 
   const render = (Plot: typeof import('@observablehq/plot'), ctx: { width: number }) =>
@@ -66,8 +66,12 @@ export function AbsoluteRiskCalibrationSection({
         });
 
   const interval = result.info.riskPredictionInterval;
+  const binnedBy =
+    rc.scale === 'absolute-risk'
+      ? 'predicted absolute risk'
+      : "the model's risk score (linear predictor)";
   const caption =
-    `Each marker is one of ${rc.nBins} risk groups (quantiles of predicted risk): the model's mean ` +
+    `Each marker is one of ${rc.nBins} risk groups (binned by ${binnedBy}): the model's mean ` +
     `predicted absolute risk (x) versus the observed absolute risk (y) — the probability of the event ` +
     `over the risk-prediction interval (${interval}) — with 95% Wald confidence intervals on the ` +
     `observed risk. Markers on the dotted identity line are well calibrated; above the line the model ` +
@@ -85,7 +89,12 @@ export function AbsoluteRiskCalibrationSection({
         pngBackground={surface}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>
-      <CalibrationBinTable bins={rc.bins} scale="absolute" isNcc={isNcc} />
+      <CalibrationBinTable
+        bins={rc.bins}
+        scale="absolute"
+        isNcc={isNcc}
+        boundaryUnit={rc.scale === 'absolute-risk' ? 'percent' : 'lp'}
+      />
     </figure>
   );
 }

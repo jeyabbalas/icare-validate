@@ -91,7 +91,8 @@ describe('ResultsPanel — absolute-risk calibration section (both fixtures)', (
     (name) => {
       seed(name);
       const text = mount();
-      expect(text).toContain('quantiles of predicted risk'); // figure caption
+      // Default (run-seeded) view bins on the linear predictor; the caption states the binning scale.
+      expect(text).toContain('risk score (linear predictor)'); // figure caption
       expect(text).toContain('Per-bin absolute-risk calibration'); // table caption
       expect(text).toContain('Observed (95% CI)'); // table header
       expect(text).toContain('E/O (95% CI)'); // table header
