@@ -1,0 +1,101 @@
+<!doctype html>
+<!--
+  Reproduce an iCARE absolute-risk model validation in the BROWSER with wasm-icare.
+
+  This page loads the engine (Pyodide + pyicare) from the jsDelivr CDN via esm.sh, so it needs internet
+  the first time it runs (~40 MB, ~20-30 s to boot; cached afterwards). Nothing is uploaded — your files
+  are read locally in the browser. For a FULLY OFFLINE page, vendor a Pyodide mirror and pass
+  `indexURL` + `pyicareWheelUrl` to loadICARE() (see the wasm-icare README, "Self-hosting / offline").
+
+  Each data input is supplied as a File from an <input type="file"> — a File is a Blob, the form the SDK
+  accepts in the browser. (Note: for the model tables and the log-OR, an in-memory JS object/array is
+  NOT accepted by wasm-icare 2.0.0 — pass the file itself, as done here. An inline formula string is OK.)
+
+  The labels below name the bundled iCARE-Lit ge50 example files. EDIT them / pick your own files.
+  To run: open this file over http(s) (e.g. `npx serve` this folder), pick the files, click Run.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>iCARE model validation — browser reproduction</title>
+    <style>
+      body { font: 15px/1.5 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+      h1 { font-size: 1.3rem; }
+      label { display: block; margin: 0.5rem 0; }
+      label span { display: inline-block; min-width: 22rem; color: #333; }
+      button { font-size: 1rem; padding: 0.5rem 1rem; margin-top: 1rem; cursor: pointer; }
+      pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; padding: 0.75rem; white-space: pre-wrap; }
+      #output { font-size: 1.05rem; }
+    </style>
+  </head>
+  <body>
+    <h1>iCARE model validation (browser)</h1>
+    <p>Select each file, then click <b>Run validation</b>. Files never leave your browser.</p>
+
+    <form id="inputs">
+      <label><span>Study data (CSV)</span><input type="file" id="studyData" /></label>
+      <label><span>Disease incidence rates (CSV)</span><input type="file" id="modelDiseaseIncidenceRates" /></label>
+      <label><span>Competing incidence rates (CSV)</span><input type="file" id="modelCompetingIncidenceRates" /></label>
+      <label><span>Covariate formula (TXT)</span><input type="file" id="modelCovariateFormula" /></label>
+      <label><span>Log relative risks (JSON)</span><input type="file" id="modelLogRelativeRisk" /></label>
+      <label><span>Reference dataset (CSV)</span><input type="file" id="modelReferenceDataset" /></label>
+      <label><span>Covariate profile (CSV)</span><input type="file" id="applyCovariateProfile" /></label>
+    </form>
+
+    <button id="run">Run validation</button>
+    <pre id="status">Idle.</pre>
+    <pre id="output"></pre>
+
+    <script type="module">
+      import { loadICARE } from 'https://esm.sh/wasm-icare@2';
+
+      const $ = (id) => document.getElementById(id);
+      const fileOf = (id) => {
+        const f = $(id).files[0];
+        if (!f) throw new Error(`Please choose a file for "${id}".`);
+        return f; // a File is a Blob — a valid TabularInput / FormulaInput / LogOddsRatiosInput
+      };
+
+      $('run').addEventListener('click', async () => {
+        const status = $('status');
+        const output = $('output');
+        output.textContent = '';
+        try {
+          status.textContent = 'Booting engine (Pyodide + pyicare) from the CDN… ~20-30 s the first time…';
+          const icare = await loadICARE(); // browser: runs Pyodide in a Web Worker by default
+
+          status.textContent = 'Engine ready. Validating…';
+          const v = await icare.validateAbsoluteRiskModel({
+            studyData: fileOf('studyData'),
+            predictedRiskInterval: 'total-followup',
+            icareModelParameters: {
+              modelDiseaseIncidenceRates: fileOf('modelDiseaseIncidenceRates'),
+              modelCompetingIncidenceRates: fileOf('modelCompetingIncidenceRates'),
+              modelCovariateFormula: fileOf('modelCovariateFormula'),
+              modelLogRelativeRisk: fileOf('modelLogRelativeRisk'),
+              modelReferenceDataset: fileOf('modelReferenceDataset'),
+              applyCovariateProfile: fileOf('applyCovariateProfile'),
+            },
+            numberOfPercentiles: 10,
+            seed: 50,
+            datasetName: 'iCARE-Lit ge50',
+            modelName: 'iCARE-Lit',
+          });
+          await icare.close(); // free the runtime + worker
+
+          status.textContent = 'Done.';
+          const auc = v.auc, cal = v.calibration.absoluteRisk;
+          output.textContent =
+            `AUC = ${auc.auc.toFixed(4)}  [${auc.lowerCi.toFixed(4)}, ${auc.upperCi.toFixed(4)}]\n` +
+            `E/O ratio = ${v.expectedByObservedRatio.ratio.toFixed(4)}\n` +
+            `Hosmer-Lemeshow chi-square = ${cal.statistic.chiSquare.toFixed(4)} (df ${cal.parameter.degreesOfFreedom})`;
+          // Expected for the bundled iCARE-Lit ge50 example: AUC ≈ 0.6341, E/O ≈ 1.0275, HL χ² ≈ 23.17 (df 10).
+        } catch (err) {
+          status.textContent = 'Error';
+          output.textContent = String((err && err.stack) || err);
+        }
+      });
+    </script>
+  </body>
+</html>

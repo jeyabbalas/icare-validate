@@ -1,0 +1,5 @@
+# Quarto render outputs (regenerate with `quarto render validate.qmd`)
+validate.html
+validate_files/
+validate.knit.md
+/.quarto/
