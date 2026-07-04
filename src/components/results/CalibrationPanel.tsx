@@ -3,6 +3,7 @@ import { cardStyle } from '../../viz/chartChrome';
 import { Metric } from './Metric';
 import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection';
 import { RelativeRiskCalibrationSection } from './RelativeRiskCalibrationSection';
+import { RebinControls } from './RebinControls';
 import { useRecomputedCalibration } from './useRecomputedCalibration';
 import type { GofResult } from '../../math/calibrationMath';
 import type { ValidationResult } from '../../lib/icareTypes';
@@ -75,6 +76,7 @@ export function CalibrationPanel({
         {gofTile('Hosmer–Lemeshow', rc.absoluteRiskGof)}
         {gofTile('Relative-risk GOF', rc.relativeRiskGof)}
       </div>
+      <RebinControls warnings={rc.warnings} />
       <div className="cal-grid">
         <AbsoluteRiskCalibrationSection rc={rc} result={result} normalized={normalized} />
         <RelativeRiskCalibrationSection rc={rc} normalized={normalized} />

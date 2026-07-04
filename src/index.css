@@ -88,6 +88,34 @@ a {
   position: relative;
 }
 
+/* Interactive re-binning toolbar (Phase 12): a full-width row of labelled controls above the two
+   calibration scatters, governing the shared recompute. Wraps on narrow screens; the controls bottom-
+   align (the reused NumberField/NumericListField bring their own 12px bottom margin, which the toggle
+   groups match). Colors are all --app-* vars, so it themes with the rest of the app. */
+.rebin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+/* Dropped out-of-range / duplicate cutpoints, surfaced from rc.warnings (aria-live). */
+.rebin-warning {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: var(--app-surface-2);
+  color: var(--app-muted);
+  font-size: 12px;
+}
+
+.rebin-warning li + li {
+  margin-top: 4px;
+}
+
 .cal-col {
   display: grid;
   grid-template-rows: auto auto auto;
