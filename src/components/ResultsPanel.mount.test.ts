@@ -74,6 +74,20 @@ describe('ResultsPanel — grouped summary (both fixtures)', () => {
   });
 });
 
+describe('ResultsPanel — absolute-risk calibration section (both fixtures)', () => {
+  it.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])(
+    'renders the calibration figure caption + per-bin table for %s',
+    (name) => {
+      seed(name);
+      const text = mount();
+      expect(text).toContain('quantiles of predicted risk'); // figure caption
+      expect(text).toContain('Per-bin absolute-risk calibration'); // table caption
+      expect(text).toContain('Observed (95% CI)'); // table header
+      expect(text).toContain('E/O (95% CI)'); // table header
+    },
+  );
+});
+
 describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
   it('shows raw counts, no nested-case-control badge, no weighted cohort', () => {
     seed('icare-lit-ge50');

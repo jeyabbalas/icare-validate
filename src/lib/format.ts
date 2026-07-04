@@ -14,6 +14,15 @@ export function formatNumber(x: number | undefined | null, digits = 3): string {
   return typeof x === 'number' && Number.isFinite(x) ? x.toFixed(digits) : EM_DASH;
 }
 
+/**
+ * A proportion (0–1) rendered as a percentage, finite-guarded → `—` (e.g. `0.0324` → `3.24%`).
+ * Guards before scaling so a non-finite input never yields a stray `—%`. Used by the calibration
+ * charts/tables where absolute risks are probabilities but read best as clinical percentages.
+ */
+export function formatPercent(x: number | undefined | null, digits = 2): string {
+  return typeof x === 'number' && Number.isFinite(x) ? `${(x * 100).toFixed(digits)}%` : EM_DASH;
+}
+
 /** Integer count with thousands separators (`5285` → `5,285`); non-finite → `—`. Rounds (for weighted Σ). */
 export function formatCount(n: number | undefined | null): string {
   return typeof n === 'number' && Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : EM_DASH;
