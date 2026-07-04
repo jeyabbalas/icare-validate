@@ -124,7 +124,7 @@ describe('recomputeCalibration — nested case-control (weighted)', () => {
 });
 
 describe('recomputeCalibration — absolute-risk scale (the app extension)', () => {
-  it('a 3% cutpoint splits ≤3% vs >3% with correct per-bin predicted risk', () => {
+  it('a 3% cutpoint splits ≤3% vs >3% with correct per-bin stats, variance, and HL', () => {
     const ps = makePerSubject({
       lp: [-1, -0.5, 0.5, 1],
       risk: [0.01, 0.02, 0.04, 0.05],
@@ -133,12 +133,46 @@ describe('recomputeCalibration — absolute-risk scale (the app extension)', () 
     const rc = recomputeCalibration(ps, false, { scale: 'absolute-risk', cutoffs: [0.03] });
     expect(rc.nBins).toBe(2);
     expect(rc.edges).toEqual([0.01, 0.03, 0.05]);
+    expect(rc.bins.map((b) => b.n)).toEqual([2, 2]); // ≤3% : {0.01,0.02}, >3% : {0.04,0.05}
     expect(rc.bins[0].lo).toBe(0.01);
     expect(rc.bins[0].hi).toBe(0.03);
+    expect(rc.bins[0].observedAbsoluteRisk).toBeCloseTo(0.5, 12); // outcome {0,1}
+    expect(rc.bins[1].observedAbsoluteRisk).toBeCloseTo(0.5, 12);
     expect(rc.bins[0].predictedAbsoluteRisk).toBeCloseTo(0.015, 12);
     expect(rc.bins[1].predictedAbsoluteRisk).toBeCloseTo(0.045, 12);
+    // Binomial variance obs(1−obs)/n = 0.5·0.5/2.
+    expect(rc.bins[0].varianceAbsoluteRisk).toBeCloseTo(0.125, 12);
+    expect(rc.bins[1].varianceAbsoluteRisk).toBeCloseTo(0.125, 12);
     expect(rc.bins[0].expectedByObservedRatio).toBeCloseTo(0.03, 12); // 0.015 / 0.5
     expect(rc.bins[1].expectedByObservedRatio).toBeCloseTo(0.09, 12); // 0.045 / 0.5
+    // HL df = nBins = 2; χ² = Σ(obs−pred)²/var = (0.485² + 0.455²)/0.125.
+    expect(rc.absoluteRiskGof.degreesOfFreedom).toBe(2);
+    expect(rc.absoluteRiskGof.chiSquare).toBeCloseTo(3.538, 3);
+    expect(rc.absoluteRiskGof.defined).toBe(true);
+    expect(rc.relativeRiskGof.degreesOfFreedom).toBe(1); // nBins − 1
+  });
+
+  it('threads inverse-probability weights through a nested case-control abs-risk cut', () => {
+    // sw = sampling weights → frequency = 1/sw = [2,2,1,1]; the ≤3% bin over-weights its two subjects.
+    const ps = makePerSubject({
+      lp: [-1, -0.5, 0.5, 1],
+      risk: [0.01, 0.02, 0.04, 0.05],
+      outcome: [0, 1, 0, 1],
+      sw: [0.5, 0.5, 1, 1],
+    });
+    const rc = recomputeCalibration(ps, true, { scale: 'absolute-risk', cutoffs: [0.03] });
+    expect(rc.nBins).toBe(2);
+    expect(rc.bins.map((b) => b.n)).toEqual([2, 2]);
+    expect(rc.bins.map((b) => b.weight)).toEqual([4, 2]); // Σ frequency: 2+2 vs 1+1
+    expect(rc.bins[0].observedAbsoluteRisk).toBeCloseTo(0.5, 12); // (0·2 + 1·2)/4
+    expect(rc.bins[0].predictedAbsoluteRisk).toBeCloseTo(0.015, 12); // (0.01·2 + 0.02·2)/4
+    expect(rc.bins[1].predictedAbsoluteRisk).toBeCloseTo(0.045, 12);
+    expect(rc.bins[0].expectedByObservedRatio).toBeCloseTo(0.03, 12);
+    // The design-corrected variance stays finite and positive (its exact value is anchored by the
+    // LP-scale parity test + the pandas oracle); the HL test is defined.
+    expect(rc.bins[0].varianceAbsoluteRisk).toBeGreaterThan(0);
+    expect(Number.isFinite(rc.bins[1].varianceAbsoluteRisk)).toBe(true);
+    expect(rc.absoluteRiskGof.defined).toBe(true);
   });
 });
 

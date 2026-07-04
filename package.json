@@ -12,6 +12,7 @@
     "vendor:duckdb": "node scripts/vendor-duckdb.mjs",
     "fixtures": "node scripts/dump-calibration-fixtures.mjs",
     "verify:kde": "node scripts/verify-kde.mjs",
+    "verify:rebin": "node scripts/verify-rebin.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
