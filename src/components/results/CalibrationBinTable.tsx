@@ -10,6 +10,8 @@ import { formatNumber, formatPercent } from '../../lib/format';
 const EM_DASH = '—';
 
 type Scale = 'absolute' | 'relative';
+/** The scale the bins were formed on — sets the units of the group's boundary bracket. */
+type BoundaryUnit = 'lp' | 'percent';
 
 interface Column {
   header: string;
@@ -79,24 +81,35 @@ function eoCell(bin: CalibrationBin): React.ReactNode {
 }
 
 /**
- * The group number with its risk-score (linear-predictor) interval beside it, muted, on a single line. Used
- * only for the relative-risk scale: relative risk is monotonic in the linear predictor, so these LP-quantile
- * bin boundaries map to clean, contiguous bands (unlike absolute risk, which isn't monotonic in the LP).
+ * The group's boundary interval in the units it was binned on: the raw risk-score (linear-predictor)
+ * bracket `bin.label` on the LP scale, or a predicted-risk percentage interval on the absolute-risk
+ * scale (where `bin.lo`/`bin.hi` are proportions — `bin.label` is raw and would read as "(0.01, 0.03]").
  */
-function groupCell(bin: CalibrationBin): React.ReactNode {
+function boundaryText(bin: CalibrationBin, unit: BoundaryUnit): string {
+  return unit === 'percent' ? `${formatPercent(bin.lo)}–${formatPercent(bin.hi)}` : bin.label;
+}
+
+/** The group number, optionally with its boundary interval beside it, muted, on a single line. */
+function groupCell(bin: CalibrationBin, boundary: string | null): React.ReactNode {
   return (
     <>
       {bin.index + 1}
-      <span style={{ color: 'var(--app-muted)', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>
-        {bin.label}
-      </span>
+      {boundary && (
+        <span style={{ color: 'var(--app-muted)', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>
+          {boundary}
+        </span>
+      )}
     </>
   );
 }
 
-function absoluteColumns(): Column[] {
+function absoluteColumns(boundaryUnit: BoundaryUnit): Column[] {
+  // Absolute risk isn't monotonic in the linear predictor, so LP-quantile boundaries aren't clean
+  // absolute-risk bands — show the bracket only when the bins ARE absolute-risk (%) intervals.
+  const boundary = (b: CalibrationBin) =>
+    boundaryUnit === 'percent' ? boundaryText(b, boundaryUnit) : null;
   return [
-    { header: 'Group', align: 'left', render: (b) => b.index + 1 },
+    { header: 'Group', align: 'left', render: (b) => groupCell(b, boundary(b)) },
     { header: 'N', align: 'right', render: (b) => b.n.toLocaleString('en-US') },
     {
       header: 'Predicted',
@@ -121,9 +134,10 @@ function absoluteColumns(): Column[] {
   ];
 }
 
-function relativeColumns(): Column[] {
+function relativeColumns(boundaryUnit: BoundaryUnit): Column[] {
+  // Relative risk is monotonic in the linear predictor, so the boundary bracket always reads cleanly.
   return [
-    { header: 'Group', align: 'left', render: groupCell },
+    { header: 'Group', align: 'left', render: (b) => groupCell(b, boundaryText(b, boundaryUnit)) },
     { header: 'N', align: 'right', render: (b) => b.n.toLocaleString('en-US') },
     {
       header: 'Predicted RR',
@@ -152,12 +166,29 @@ export interface CalibrationBinTableProps {
   scale: Scale;
   /** Nested case-control: risks are inverse-probability-weighted (noted below the table). */
   isNcc?: boolean;
+  /**
+   * The scale the bins were formed on (orthogonal to `scale`, which picks the risk columns). Sets the
+   * boundary bracket's units: raw linear predictor (`'lp'`, default) or predicted-risk percent.
+   */
+  boundaryUnit?: BoundaryUnit;
 }
 
-export function CalibrationBinTable({ bins, scale, isNcc = false }: CalibrationBinTableProps) {
-  const columns = scale === 'absolute' ? absoluteColumns() : relativeColumns();
+export function CalibrationBinTable({
+  bins,
+  scale,
+  isNcc = false,
+  boundaryUnit = 'lp',
+}: CalibrationBinTableProps) {
+  const columns = scale === 'absolute' ? absoluteColumns(boundaryUnit) : relativeColumns(boundaryUnit);
   const caption =
     scale === 'absolute' ? 'Per-bin absolute-risk calibration' : 'Per-bin relative-risk calibration';
+  // The boundary bracket shows on the relative table always, and on the absolute table only when the
+  // bins are absolute-risk (%) intervals.
+  const showBracket = scale === 'relative' || boundaryUnit === 'percent';
+  const bracketDesc =
+    boundaryUnit === 'percent'
+      ? ' The bracket is each group’s predicted absolute-risk (%) interval.'
+      : ' The bracket is each group’s risk-score (linear-predictor) interval.';
 
   return (
     <div style={wrap}>
@@ -186,8 +217,7 @@ export function CalibrationBinTable({ bins, scale, isNcc = false }: CalibrationB
       </table>
       <p style={note}>
         Groups run from the lowest to the highest predicted risk.
-        {scale === 'relative' &&
-          ' The bracket is each group’s risk-score (linear-predictor) interval.'}
+        {showBracket && bracketDesc}
         {isNcc && ' Observed risks and intervals are inverse-probability-weighted (nested case-control).'}
       </p>
     </div>

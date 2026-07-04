@@ -131,3 +131,31 @@ describe('CalibrationBinTable — relative scale (Phase 9 reuse)', () => {
     expect(container.textContent ?? '').not.toContain('(0.5, 1.5]');
   });
 });
+
+describe('CalibrationBinTable — absolute-risk binning (boundaryUnit="percent")', () => {
+  it('shows the predicted-risk % interval on the absolute table', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'absolute',
+        boundaryUnit: 'percent',
+        bins: [bin({ index: 0, lo: 0.01, hi: 0.03 })],
+      }),
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('1.00%–3.00%');
+    expect(text).toContain('predicted absolute-risk (%) interval');
+  });
+
+  it('shows the % interval on the relative table too, not the raw proportion label', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'relative',
+        boundaryUnit: 'percent',
+        bins: [bin({ index: 0, lo: 0.01, hi: 0.03, label: '(0.01, 0.03]' })],
+      }),
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('1.00%–3.00%');
+    expect(text).not.toContain('(0.01, 0.03]');
+  });
+});
