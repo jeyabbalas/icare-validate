@@ -1,4 +1,4 @@
-import { formatNumber, formatPValue, formatCi } from '../../lib/format';
+import { formatNumber, formatPValue, formatCi, formatCount } from '../../lib/format';
 import { cardStyle } from '../../viz/chartChrome';
 import { Metric } from './Metric';
 import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection';
@@ -35,6 +35,7 @@ const headerRow: React.CSSProperties = {
   gap: 12,
   marginBottom: 16,
 };
+const excludedNote: React.CSSProperties = { margin: '0 0 12px', fontSize: 12, color: 'var(--app-muted)' };
 
 /**
  * One recomputed goodness-of-fit test as a Metric tile: the p-value as the headline, χ² · df as the
@@ -64,6 +65,7 @@ export function CalibrationPanel({
   rc: RecomputedCalibration;
 }) {
   const eo = result.expectedByObservedRatio;
+  const total = normalized.perSubject.n;
 
   return (
     <section style={card} aria-label="Calibration">
@@ -78,6 +80,12 @@ export function CalibrationPanel({
         {gofTile('Relative-risk GOF', rc.relativeRiskGof)}
       </div>
       <RebinControls warnings={rc.warnings} />
+      {rc.nExcluded > 0 && (
+        <p style={excludedNote} role="note">
+          {formatCount(total - rc.nExcluded)} of {formatCount(total)} subjects binned ·{' '}
+          {formatCount(rc.nExcluded)} excluded from the per-bin calibration (missing risk score).
+        </p>
+      )}
       <div className="cal-grid">
         <AbsoluteRiskCalibrationSection rc={rc} result={result} normalized={normalized} />
         <RelativeRiskCalibrationSection rc={rc} normalized={normalized} />

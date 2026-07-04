@@ -18,6 +18,7 @@ function seed(name: FixtureName): void {
   useResultsStore.setState({
     result,
     normalized: normalizeValidationResult(result),
+    provenance: { mode: 'A', numImputations: null, seed: 50 },
     status: 'done',
     error: null,
   });
@@ -195,6 +196,10 @@ describe('ResultsPanel — cohort study (iCARE-Lit)', () => {
     expect(text).not.toContain('nested case-control');
     expect(text).not.toContain('effective cohort');
     expect(text).not.toContain('wt. mean');
+    // Reproducibility provenance line (frozen at run time): Mode A → imputations + seed.
+    expect(text).toContain('Mode A');
+    expect(text).toContain('imputation'); // "5 imputations (default)"
+    expect(text).toContain('seed 50');
   });
 
   it('surfaces the incidence proportion, the censoring breakdown, and total person-time', () => {

@@ -83,6 +83,7 @@ function ResultsContent({
   const numberOfPercentiles = useRebinStore((s) => s.numberOfPercentiles);
   const cutpoints = useRebinStore((s) => s.cutpoints);
   const defaultSpec = useRebinStore((s) => s.defaultSpec);
+  const provenance = useResultsStore((s) => s.provenance);
   const rebin = { scale, method, numberOfPercentiles, cutpoints };
 
   const [busy, setBusy] = useState(false);
@@ -92,17 +93,29 @@ function ResultsContent({
   // Only materialize the individual-file text when the section is expanded (avoids rebuilding the large
   // study-data CSV on every re-bin while it's collapsed). The ZIP path builds its own copy on click.
   const files = useMemo(
-    () => (filesOpen ? collectResultFiles(result, normalized, rc, rebin, defaultSpec) : null),
+    () =>
+      filesOpen ? collectResultFiles(result, normalized, rc, rebin, defaultSpec, provenance) : null,
     // `rebin` is rebuilt each render; depend on its fields.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filesOpen, result, normalized, rc, scale, method, numberOfPercentiles, cutpoints, defaultSpec],
+    [
+      filesOpen,
+      result,
+      normalized,
+      rc,
+      scale,
+      method,
+      numberOfPercentiles,
+      cutpoints,
+      defaultSpec,
+      provenance,
+    ],
   );
 
   const onDownloadAll = async (): Promise<void> => {
     setBusy(true);
     setExportError(null);
     try {
-      await downloadAllZip({ result, normalized, rc, rebin, defaultSpec });
+      await downloadAllZip({ result, normalized, rc, rebin, defaultSpec, provenance });
     } catch (err) {
       setExportError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -111,6 +124,16 @@ function ResultsContent({
   };
 
   const { info } = result;
+  // One-line reproducibility provenance (frozen at run time). Mode A imputes missing covariates, so its
+  // imputation count + seed matter; Mode B validates precomputed risks and does no imputation.
+  const provLine =
+    provenance == null
+      ? null
+      : provenance.mode === 'A'
+        ? `Mode A · ${provenance.numImputations ?? 5} imputation${
+            (provenance.numImputations ?? 5) === 1 ? '' : 's'
+          }${provenance.numImputations == null ? ' (default)' : ''} · seed ${provenance.seed}`
+        : 'Mode B · precomputed risks';
 
   return (
     <main>
@@ -120,6 +143,18 @@ function ResultsContent({
           <div style={{ fontSize: 13, color: 'var(--app-muted)' }}>
             {info.modelName || 'Model'} · interval: {info.riskPredictionInterval}
           </div>
+          {provLine && (
+            <div
+              style={{ fontSize: 12, color: 'var(--app-muted)', marginTop: 2 }}
+              title={
+                provenance?.mode === 'A'
+                  ? 'Mode A imputes missing covariates/SNPs (num_imputations, default 5); the seed makes that imputation reproducible.'
+                  : 'Mode B validates precomputed risk / linear-predictor columns; no imputation is performed.'
+              }
+            >
+              {provLine}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {normalized.isNcc && <Badge>nested case-control</Badge>}

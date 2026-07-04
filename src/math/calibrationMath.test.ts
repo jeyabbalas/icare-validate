@@ -224,6 +224,24 @@ describe('recomputeCalibration — degenerate / guarded cases (never throws)', (
     expect(rc.nBins).toBeLessThan(10);
     expect(rc.absoluteRiskGof.degreesOfFreedom).toBe(rc.nBins);
     expect(rc.bins.reduce((s, b) => s + b.n, 0)).toBe(10); // every subject binned
+    // The shortfall from the requested decile count is surfaced as a warning (not silent).
+    expect(rc.warnings.some((w) => /Requested 10 risk groups, realized/.test(w))).toBe(true);
+    expect(rc.nExcluded).toBe(0); // no NaN scores here — every subject is binned
+  });
+
+  it('excludes NaN scores from every bin and counts them in nExcluded', () => {
+    const ps = makePerSubject({
+      lp: [1, 2, NaN, 4, NaN], // two unbinnable scores
+      outcome: [0, 1, 1, 0, 1],
+      risk: [0.1, 0.2, 0.3, 0.4, 0.5],
+    });
+    const rc = recomputeCalibration(ps, false, {
+      scale: 'linear-predictor',
+      numberOfPercentiles: 2,
+    });
+    expect(rc.nExcluded).toBe(2);
+    expect(rc.bins.reduce((s, b) => s + b.n, 0)).toBe(3); // only the 3 finite-score subjects binned
+    expect([...rc.binIndex].filter((b) => b < 0)).toHaveLength(2);
   });
 
   it('a constant score → single bin, RR GOF undefined (df 0)', () => {

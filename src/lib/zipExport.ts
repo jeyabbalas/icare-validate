@@ -6,6 +6,7 @@ import { listResultsFigures, type FigureEntry } from '../viz/figureRegistry';
 import type { NormalizedResult } from '../services/resultNormalizer';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 import type { RunBinSpec } from '../state/rebinStore';
+import type { RunProvenance } from '../state/resultsStore';
 import type { ValidationResult } from './icareTypes';
 
 // Phase 13 — "Download all": bundle every figure (SVG + PNG) + every result table (from resultsExport)
@@ -30,6 +31,7 @@ export interface ExportContext {
   rc: RecomputedCalibration;
   rebin: RebinSnapshot;
   defaultSpec: RunBinSpec | null;
+  provenance: RunProvenance | null;
 }
 
 // A fixed timestamp for every ZIP entry so the archive bytes are reproducible (fflate defaults each
@@ -73,7 +75,7 @@ export function buildReadme(
   missing: string[],
   now: Date,
 ): string {
-  const { result, normalized, rebin, rc, defaultSpec } = ctx;
+  const { result, normalized, rebin, rc, defaultSpec, provenance } = ctx;
   const info = result.info;
   const L: string[] = [];
   L.push('iCARE-validate — validation export');
@@ -87,6 +89,14 @@ export function buildReadme(
     `Study design:   ${normalized.isNcc ? 'nested case-control (inverse-probability weighted)' : 'cohort'}`,
   );
   L.push(`Engine:         py-icare ${PYICARE_VERSION} — ${result.method}`);
+  if (provenance) {
+    // Mode A imputes missing covariates (num_imputations, default 5); Mode B uses precomputed risks.
+    const imp =
+      provenance.mode === 'A'
+        ? `${provenance.numImputations ?? 5}${provenance.numImputations == null ? ' (default)' : ''}`
+        : 'n/a (precomputed risks)';
+    L.push(`Run:            Mode ${provenance.mode} · imputations ${imp} · seed ${provenance.seed}`);
+  }
   L.push('');
 
   L.push('FIGURES (figures/)');
@@ -217,6 +227,7 @@ export async function downloadAllZip(opts: DownloadAllOptions): Promise<void> {
     opts.rc,
     opts.rebin,
     opts.defaultSpec,
+    opts.provenance,
     now,
   );
   const readme = buildReadme(

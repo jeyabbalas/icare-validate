@@ -4,6 +4,7 @@ import { PYICARE_VERSION } from './icareTypes';
 import { decodeCategorical } from '../services/resultNormalizer';
 import { computeCohortSummary, type CohortSummary } from './cohortSummary';
 import { isDefaultRebin, type RebinState, type RunBinSpec } from '../state/rebinStore';
+import type { RunProvenance } from '../state/resultsStore';
 import type { NormalizedResult } from '../services/resultNormalizer';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 import type {
@@ -248,6 +249,23 @@ function flattenSdkGof(g: GoodnessOfFitTest) {
 }
 
 /**
+ * Run reproducibility settings for the provenance block. py-icare imputes missing covariates/SNPs only on
+ * the compute-risks path (Mode A) — `num_imputations` defaults to 5 when the user leaves it blank — so we
+ * report the effective count and flag when the default was used; Mode B (precomputed risks) skips
+ * imputation entirely, hence `imputations: null`.
+ */
+function runProvenanceBlock(p: RunProvenance | null) {
+  if (!p) return null;
+  const imputes = p.mode === 'A';
+  return {
+    mode: p.mode, // 'A' = model built from parameters; 'B' = precomputed risks supplied
+    imputations: imputes ? p.numImputations ?? 5 : null,
+    imputationsDefault: imputes && p.numImputations == null, // true → py-icare's built-in default (5) was used
+    seed: p.seed, // seed for the imputation RNG (only affects Mode A runs with missing values)
+  };
+}
+
+/**
  * The headline metrics as JSON, with provenance and TWO clearly-labelled blocks:
  *  • `sdkAsRun` — the binning-invariant scalars (AUC, Brier, overall E/O) + the SDK's default-binned GOF;
  *  • `currentView` — the interactive re-bin spec + the recomputed GOF that matches what's on screen.
@@ -259,6 +277,7 @@ export function metricsJson(
   rc: RecomputedCalibration,
   rebin: RebinSnapshot,
   defaultSpec: RunBinSpec | null,
+  provenance: RunProvenance | null,
   now: Date = new Date(),
 ): string {
   const payload = {
@@ -269,6 +288,7 @@ export function metricsJson(
     info: result.info,
     isNcc: normalized.isNcc,
     hasReference: Boolean(result.reference),
+    run: runProvenanceBlock(provenance), // mode + imputation/seed reproducibility settings (null pre-run)
     sdkAsRun: {
       auc: result.auc,
       brierScore: result.brierScore,
@@ -292,6 +312,7 @@ export function metricsJson(
         nBins: rc.nBins,
         isDefaultRebin: isDefaultRebin({ ...rebin, defaultSpec }),
       },
+      nExcluded: rc.nExcluded, // subjects dropped from the per-bin calibration (NaN/unbinnable score)
       absoluteRiskGof: rc.absoluteRiskGof, // flat GofResult incl. `defined` + variance
       relativeRiskGof: rc.relativeRiskGof,
       warnings: rc.warnings,
@@ -313,11 +334,12 @@ export function collectResultFiles(
   rc: RecomputedCalibration,
   rebin: RebinSnapshot,
   defaultSpec: RunBinSpec | null,
+  provenance: RunProvenance | null,
   now: Date = new Date(),
 ): Record<string, string> {
   const summary = computeCohortSummary(normalized.perSubject, normalized.isNcc);
   const files: Record<string, string> = {
-    'metrics.json': metricsJson(result, normalized, rc, rebin, defaultSpec, now),
+    'metrics.json': metricsJson(result, normalized, rc, rebin, defaultSpec, provenance, now),
     'calibration-current-view.csv': currentCalibrationCsv(rc),
     'calibration-sdk-default.csv': sdkCalibrationCsv(result),
     'study-data.csv': studyDataCsv(result),

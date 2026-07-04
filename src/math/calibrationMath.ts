@@ -63,6 +63,7 @@ export interface RecomputedCalibration {
   scale: BinScale;
   isNcc: boolean;
   nBins: number;
+  nExcluded: number; // subjects with a NaN/unbinnable score (binIndex −1), dropped from every per-bin stat
   bins: CalibrationBin[];
   binIndex: Int32Array; // per-subject realized bin; -1 = NaN / unbinnable score
   edges: number[]; // realized cut edges
@@ -153,14 +154,31 @@ export function recomputeCalibration(
   const assignment = assignBins(score, edges, { dropEmpty });
   const { binIndex, nBins, bins: binMetas } = assignment;
 
+  // On the quantile path, tied scores collapse duplicate edges (and any empty bins are dropped), so the
+  // realized bin count can fall below the number requested — which also shrinks the goodness-of-fit df.
+  // Surface that so "10 deciles" silently becoming 7 groups is never invisible. (The custom-cutoff path
+  // keeps its bins and warns separately about out-of-range/duplicate cutoffs.)
+  if (dropEmpty) {
+    const requested = options.numberOfPercentiles ?? 10;
+    if (nBins < requested) {
+      warnings.push(
+        `Requested ${requested} risk groups, realized ${nBins} — tied scores merged quantile bins, reducing the goodness-of-fit degrees of freedom.`,
+      );
+    }
+  }
+
   // ---- Per-bin observed / predicted / variance -----------------------------
   const cnt = new Array<number>(nBins).fill(0);
   const sumW = new Float64Array(nBins); // Σ frequency (ncc) or n (cohort)
   const sumObs = new Float64Array(nBins); // Σ outcome (cohort) or Σ outcome·freq (ncc)
   const sumPred = new Float64Array(nBins); // Σ risk (cohort) or Σ risk·freq (ncc)
+  let nExcluded = 0; // subjects whose score was NaN/unbinnable (binIndex −1) — dropped from every bin
   for (let i = 0; i < binIndex.length; i += 1) {
     const b = binIndex[i];
-    if (b < 0) continue;
+    if (b < 0) {
+      nExcluded += 1;
+      continue;
+    }
     cnt[b] += 1;
     const w = isNcc ? frequency![i] : 1;
     sumW[b] += w;
@@ -274,6 +292,7 @@ export function recomputeCalibration(
     scale: options.scale,
     isNcc,
     nBins,
+    nExcluded,
     bins: outBins,
     binIndex,
     edges,

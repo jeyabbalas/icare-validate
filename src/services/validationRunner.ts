@@ -24,13 +24,26 @@ export async function runValidation(): Promise<void> {
 
   // Clear any prior result up front so the Results view never shows stale data alongside a live run.
   // No navigation here — we stay on the Input tab; the RunActionBar renders the running state off `status`.
-  useResultsStore.setState({ result: null, normalized: null, status: 'running', error: null });
+  useResultsStore.setState({
+    result: null,
+    normalized: null,
+    provenance: null,
+    status: 'running',
+    error: null,
+  });
 
   try {
     // Build inside the try so a builder error surfaces the same way an engine error does.
     const result = await validate(buildValidateOptions(input, binSettings));
     const normalized = normalizeValidationResult(result);
-    useResultsStore.setState({ result, normalized, status: 'done', error: null });
+    // Freeze the reproducibility settings that produced this result, so the exported provenance can't
+    // drift from later input edits (mirrors how rebinStore snapshots the run's binning below).
+    const provenance = {
+      mode: input.mode,
+      numImputations: input.numImputations,
+      seed: binSettings.seed,
+    };
+    useResultsStore.setState({ result, normalized, provenance, status: 'done', error: null });
     // Seed the results-step re-binning from what the SDK actually binned, so the calibration view opens
     // reproducing the frozen result and "Reset to default" returns here — immune to later input edits.
     useRebinStore.getState().initFromRun({

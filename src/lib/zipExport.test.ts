@@ -14,6 +14,7 @@ import {
 } from './zipExport';
 import type { RebinSnapshot } from './resultsExport';
 import type { RunBinSpec } from '../state/rebinStore';
+import type { RunProvenance } from '../state/resultsStore';
 
 // The pure builders + the DOM orchestrator both live here (jsdom, since the orchestrator needs Blob /
 // anchor / URL). The real canvas raster path (svgToPngBlob) is injected away — jsdom has no canvas — so
@@ -21,6 +22,7 @@ import type { RunBinSpec } from '../state/rebinStore';
 
 const NOW = new Date('2026-07-04T12:00:00.000Z');
 const DEFAULT_SPEC: RunBinSpec = { numberOfPercentiles: 10, linearPredictorCutoffs: null };
+const DEFAULT_PROVENANCE: RunProvenance = { mode: 'A', numImputations: null, seed: 50 };
 const DEFAULT_REBIN: RebinSnapshot = {
   scale: 'linear-predictor',
   method: 'quantiles',
@@ -35,7 +37,14 @@ function ctxFor(name: FixtureName): ExportContext {
     scale: 'linear-predictor',
     numberOfPercentiles: 10,
   });
-  return { result, normalized, rc, rebin: DEFAULT_REBIN, defaultSpec: DEFAULT_SPEC };
+  return {
+    result,
+    normalized,
+    rc,
+    rebin: DEFAULT_REBIN,
+    defaultSpec: DEFAULT_SPEC,
+    provenance: DEFAULT_PROVENANCE,
+  };
 }
 
 describe('assembleEntries', () => {
@@ -163,6 +172,7 @@ describe('downloadAllZip (orchestrator)', () => {
       rc,
       rebin: DEFAULT_REBIN,
       defaultSpec: DEFAULT_SPEC,
+      provenance: DEFAULT_PROVENANCE,
       figures,
       rasterize: async () => new Uint8Array([137, 80, 78, 71]),
       now: NOW,

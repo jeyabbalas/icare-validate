@@ -22,9 +22,11 @@ import {
 } from './resultsExport';
 import type { CategoricalColumn, ColumnarTableResult, ValidationResult } from './icareTypes';
 import type { RunBinSpec } from '../state/rebinStore';
+import type { RunProvenance } from '../state/resultsStore';
 
 const NOW = new Date('2026-07-04T12:00:00.000Z');
 const DEFAULT_SPEC: RunBinSpec = { numberOfPercentiles: 10, linearPredictorCutoffs: null };
+const DEFAULT_PROVENANCE: RunProvenance = { mode: 'A', numImputations: null, seed: 50 };
 const DEFAULT_REBIN: RebinSnapshot = {
   scale: 'linear-predictor',
   method: 'quantiles',
@@ -187,12 +189,16 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
   });
 
   it('metricsJson: provenance + both blocks; SDK scalars verbatim; default view is default', () => {
-    const m = JSON.parse(metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, NOW));
+    const m = JSON.parse(
+      metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, DEFAULT_PROVENANCE, NOW),
+    );
     expect(m.app).toBe('iCARE-validate');
     expect(m.exportedAt).toBe('2026-07-04T12:00:00.000Z');
     expect(m.pyicareVersion).toBe('1.3.0');
     expect(m.isNcc).toBe(normalized.isNcc);
     expect(m.hasReference).toBe(false);
+    // run provenance: Mode A with a blank imputation count → py-icare's default of 5, flagged as default
+    expect(m.run).toEqual({ mode: 'A', imputations: 5, imputationsDefault: true, seed: 50 });
     // binning-invariant scalars come straight off the SDK result
     expect(m.sdkAsRun.auc.auc).toBe(result.auc.auc);
     expect(m.sdkAsRun.expectedByObservedRatio.ratio).toBe(result.expectedByObservedRatio.ratio);
@@ -204,10 +210,37 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
     );
     expect(m.currentView.binning.isDefaultRebin).toBe(true);
     expect(m.currentView.binning.nBins).toBe(10);
+    expect(m.currentView.nExcluded).toBe(0); // continuous fixture scores → nothing unbinnable
     // recompute at the run-seeded default reproduces the SDK Hosmer–Lemeshow within engine tolerance
     const a = m.currentView.absoluteRiskGof.chiSquare;
     const b = m.sdkAsRun.calibration.absoluteRisk.chiSquare;
     expect(Math.abs(a - b) / Math.abs(b)).toBeLessThan(1e-3);
+  });
+
+  it('metricsJson: run provenance reflects mode, imputations, and seed', () => {
+    // Mode A, explicit imputation count → reported verbatim, not flagged as the default
+    const mA = JSON.parse(
+      metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, {
+        mode: 'A',
+        numImputations: 20,
+        seed: 7,
+      }, NOW),
+    );
+    expect(mA.run).toEqual({ mode: 'A', imputations: 20, imputationsDefault: false, seed: 7 });
+    // Mode B skips imputation entirely → imputations null
+    const mB = JSON.parse(
+      metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, {
+        mode: 'B',
+        numImputations: null,
+        seed: 50,
+      }, NOW),
+    );
+    expect(mB.run).toEqual({ mode: 'B', imputations: null, imputationsDefault: false, seed: 50 });
+    // no provenance captured (pre-run / legacy) → null block
+    const mNull = JSON.parse(
+      metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, null, NOW),
+    );
+    expect(mNull.run).toBeNull();
   });
 
   it('metricsJson: a 3% absolute-risk re-bin moves currentView but not sdkAsRun', () => {
@@ -221,8 +254,12 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
       numberOfPercentiles: 10,
       cutpoints: [3],
     };
-    const mDef = JSON.parse(metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, NOW));
-    const m3 = JSON.parse(metricsJson(result, normalized, rc3, rebin3, DEFAULT_SPEC, NOW));
+    const mDef = JSON.parse(
+      metricsJson(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, DEFAULT_PROVENANCE, NOW),
+    );
+    const m3 = JSON.parse(
+      metricsJson(result, normalized, rc3, rebin3, DEFAULT_SPEC, DEFAULT_PROVENANCE, NOW),
+    );
 
     expect(m3.currentView.binning.isDefaultRebin).toBe(false);
     expect(m3.currentView.binning.scale).toBe('absolute-risk');
@@ -239,7 +276,15 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
   });
 
   it('collectResultFiles: exact file set (no reference in these fixtures)', () => {
-    const files = collectResultFiles(result, normalized, rc, DEFAULT_REBIN, DEFAULT_SPEC, NOW);
+    const files = collectResultFiles(
+      result,
+      normalized,
+      rc,
+      DEFAULT_REBIN,
+      DEFAULT_SPEC,
+      DEFAULT_PROVENANCE,
+      NOW,
+    );
     expect(Object.keys(files).sort()).toEqual([
       'calibration-current-view.csv',
       'calibration-sdk-default.csv',

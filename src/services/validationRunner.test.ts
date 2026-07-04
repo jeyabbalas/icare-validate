@@ -103,6 +103,12 @@ describe('runValidation', () => {
     expect(rs.result).toBe(fakeResult);
     expect(rs.normalized?.perSubject.n).toBe(2);
     expect(rs.error).toBeNull();
+    // Reproducibility settings are frozen with the result (Mode A, default imputations, the run's seed).
+    expect(rs.provenance).toEqual({
+      mode: 'A',
+      numImputations: null,
+      seed: useBinSettingsStore.getState().seed,
+    });
     expect(useAppStore.getState().step).toBe('results');
     expect(validate).toHaveBeenCalledOnce();
   });
@@ -133,6 +139,7 @@ describe('runValidation', () => {
     expect(rs.error).toMatch(/runtime assets missing/i);
     expect(rs.result).toBeNull();
     expect(rs.normalized).toBeNull();
+    expect(rs.provenance).toBeNull();
     // No navigation on failure — we stay on Input; the RunActionBar surfaces the error inline.
     expect(useAppStore.getState().step).toBe('input');
   });
