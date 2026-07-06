@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { ingestByKind, type SlotKind } from '../../lib/csvIngest';
 import { emptySlot, type FileSlot } from '../../state/inputStore';
+import { Button } from '../ui/Button';
 
 interface FileDropSlotProps {
   label: string;
@@ -176,23 +177,16 @@ export function FileDropSlot({
                 {slot.size != null ? ` · ${humanSize(slot.size)}` : ''}
               </div>
             </div>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={(e) => {
                 e.stopPropagation();
                 clear();
               }}
-              style={{
-                border: '1px solid var(--app-border)',
-                borderRadius: 'var(--app-radius)',
-                background: 'var(--app-surface-2)',
-                color: 'var(--app-fg)',
-                padding: '2px 8px',
-                fontSize: 12,
-              }}
+              style={{ padding: '2px 8px', fontSize: 12 }}
             >
               Clear
-            </button>
+            </Button>
           </div>
         )}
       </div>

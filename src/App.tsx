@@ -21,7 +21,7 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: 16 }}>
+    <div className="app-shell">
       <AppHeader />
       <Stepper />
       {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}

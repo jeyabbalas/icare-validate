@@ -8,20 +8,17 @@ import { DataPreviewSection } from './DataPreviewSection';
 import { FileDropSlot } from './FileDropSlot';
 import { InputSummaryPanel } from './InputSummaryPanel';
 import { ModelEquationSection } from './ModelEquationSection';
-import { RatesChartSection, type RateUnits } from './RatesChartSection';
+import { RatesChartSection } from './RatesChartSection';
 import { ReferencePopulationPanel } from './ReferencePopulationPanel';
 import { RunActionBar } from './RunActionBar';
 import { NumberField, NumericListField, RiskIntervalControl, TextField } from './fields';
+import { Button } from '../ui/Button';
+import { Card } from '../ui/Card';
+import type { RateUnits } from '../../viz/chartChrome';
 
-// Layout tokens reused across the sub-panels.
-const cardStyle: React.CSSProperties = {
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius)',
-  padding: 12,
-  background: 'var(--app-surface)',
-  marginBottom: 16,
-};
-
+// Every sub-panel is a <Card> (the shared surface primitive) carrying the input step's 16px bottom gap;
+// its title is a plain 14px heading (distinct from the results panels' uppercase Section titles).
+const cardGap: React.CSSProperties = { marginBottom: 16 };
 const cardTitle: React.CSSProperties = { margin: '0 0 10px', fontSize: 14 };
 
 // Validated categorical hues (dataviz reference palette) for the two incidence charts — a
@@ -167,46 +164,31 @@ function ExampleLoaderBar() {
   const reset = useInputStore((s) => s.reset);
 
   return (
-    <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+    <Card style={{ ...cardGap, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
       <span style={{ fontSize: 13, fontWeight: 600 }}>Load example:</span>
       {EXAMPLE_IDS.map((id) => {
         const active = exampleId === id;
         return (
-          <button
+          <Button
             key={id}
-            type="button"
+            variant="toggle"
+            active={active}
             disabled={loading}
             onClick={() => void loadExample(id)}
             aria-pressed={active}
-            style={{
-              border: `1px solid ${active ? 'var(--app-accent)' : 'var(--app-border)'}`,
-              borderRadius: 'var(--app-radius)',
-              background: active ? 'var(--app-accent)' : 'var(--app-surface-2)',
-              color: active ? 'var(--app-accent-fg)' : 'var(--app-fg)',
-              padding: '8px 12px',
-              fontWeight: 600,
-            }}
+            // Preserve the loader bar's roomier button size over the compact `toggle` default.
+            style={{ padding: '8px 12px', fontSize: 14 }}
           >
             {EXAMPLE_LABELS[id]}
-          </button>
+          </Button>
         );
       })}
       {loading && <span style={{ fontSize: 12, color: 'var(--app-muted)' }}>Loading…</span>}
-      <button
-        type="button"
-        onClick={() => reset()}
-        style={{
-          border: '1px solid var(--app-border)',
-          borderRadius: 'var(--app-radius)',
-          background: 'var(--app-surface-2)',
-          color: 'var(--app-fg)',
-          padding: '8px 12px',
-        }}
-      >
+      <Button variant="secondary" onClick={() => reset()}>
         Reset
-      </button>
+      </Button>
       {error && <span style={{ fontSize: 12, color: 'var(--app-danger)' }}>⚠ {error}</span>}
-    </div>
+    </Card>
   );
 }
 
@@ -235,7 +217,7 @@ function ModeToggle() {
     );
   };
   return (
-    <div style={{ ...cardStyle }}>
+    <Card style={cardGap}>
       <h3 style={cardTitle}>Validation mode</h3>
       <div style={{ display: 'flex', gap: 12 }}>
         {option('A', 'A · Build model from parameters', 'Provide formula, β, rates, reference')}
@@ -245,7 +227,7 @@ function ModeToggle() {
           'Study data already has risk / linear-predictor columns',
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -261,7 +243,7 @@ function ConfigPanel() {
   const setBin = useBinSettingsStore((s) => s.set);
 
   return (
-    <div style={cardStyle}>
+    <Card style={cardGap}>
       <h3 style={cardTitle}>Configuration</h3>
       <div className="config-grid">
         <RiskIntervalControl
@@ -300,7 +282,7 @@ function ConfigPanel() {
           />
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -347,7 +329,7 @@ function ModeAPanel() {
   const setConfig = useInputStore((s) => s.setConfig);
 
   return (
-    <div style={cardStyle}>
+    <Card style={cardGap}>
       <h3 style={cardTitle}>Model inputs</h3>
       <StudySlot />
       <ModelFileSlots specs={MODE_A_PRIMARY} />
@@ -382,7 +364,7 @@ function ModeAPanel() {
       </details>
 
       <ReferencePopulationPanel />
-    </div>
+    </Card>
   );
 }
 
@@ -394,7 +376,7 @@ function ModeBPanel() {
   const setModelFile = useInputStore((s) => s.setModelFile);
 
   return (
-    <div style={cardStyle}>
+    <Card style={cardGap}>
       <h3 style={cardTitle}>Pre-computed risks</h3>
       <StudySlot />
       <p style={{ fontSize: 12, color: 'var(--app-muted)', marginTop: 0 }}>
@@ -427,6 +409,6 @@ function ModeBPanel() {
       />
 
       <ReferencePopulationPanel />
-    </div>
+    </Card>
   );
 }

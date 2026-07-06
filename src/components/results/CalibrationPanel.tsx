@@ -1,5 +1,6 @@
 import { formatNumber, formatPValue, formatCi, formatCount } from '../../lib/format';
-import { cardStyle } from '../../viz/chartChrome';
+import { Section } from '../ui/Section';
+import { metricRow } from '../ui/styles';
 import { Metric } from './Metric';
 import { AbsoluteRiskCalibrationSection } from './AbsoluteRiskCalibrationSection';
 import { RelativeRiskCalibrationSection } from './RelativeRiskCalibrationSection';
@@ -20,21 +21,6 @@ import type { NormalizedResult } from '../../services/resultNormalizer';
 // binning-invariant). The two sub-panels sit in a `.cal-grid` (see index.css): equal-width columns whose
 // plot / caption / table rows align via CSS subgrid on wide viewports, stacking to one column on narrow ones.
 
-const card: React.CSSProperties = { ...cardStyle, margin: '0 0 16px' };
-const sectionTitle: React.CSSProperties = {
-  margin: '0 0 10px',
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  color: 'var(--app-muted)',
-};
-const headerRow: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 12,
-  marginBottom: 16,
-};
 const excludedNote: React.CSSProperties = { margin: '0 0 12px', fontSize: 12, color: 'var(--app-muted)' };
 
 /**
@@ -68,9 +54,8 @@ export function CalibrationPanel({
   const total = normalized.perSubject.n;
 
   return (
-    <section style={card} aria-label="Calibration">
-      <h3 style={sectionTitle}>Calibration</h3>
-      <div style={headerRow}>
+    <Section title="Calibration">
+      <div style={{ ...metricRow, marginBottom: 16 }}>
         <Metric
           label="E / O ratio"
           value={formatNumber(eo.ratio)}
@@ -91,6 +76,6 @@ export function CalibrationPanel({
         <RelativeRiskCalibrationSection rc={rc} normalized={normalized} />
       </div>
       <EoRatioSection rc={rc} />
-    </section>
+    </Section>
   );
 }

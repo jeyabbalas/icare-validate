@@ -1,6 +1,7 @@
 import { isDefaultRebin, useRebinStore, type RebinScale, type RebinMethod } from '../../state/rebinStore';
 import { miniToggle } from '../../viz/chartChrome';
 import { NumberField, NumericListField } from '../input/fields';
+import { Button } from '../ui/Button';
 
 // The full-width interactive re-binning toolbar above the two calibration scatters (Phase 12). It governs
 // the shared `rc` — both plots, both per-bin tables, and the H–L / RR goodness-of-fit tiles — so it lives
@@ -19,20 +20,6 @@ const group: React.CSSProperties = {
   marginBottom: 12,
 };
 const groupLabel: React.CSSProperties = { fontWeight: 600, fontSize: 13, color: 'var(--app-fg)' };
-
-function resetButton(enabled: boolean): React.CSSProperties {
-  return {
-    border: '1px solid var(--app-border)',
-    borderRadius: 'var(--app-radius)',
-    background: 'var(--app-surface-2)',
-    color: enabled ? 'var(--app-fg)' : 'var(--app-muted)',
-    padding: '6px 12px',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: enabled ? 'pointer' : 'default',
-    opacity: enabled ? 1 : 0.55,
-  };
-}
 
 /** A labelled segmented toggle built on the shared `miniToggle` button style. */
 function Segmented<T extends string>({
@@ -119,14 +106,14 @@ export function RebinControls({ warnings }: { warnings: string[] }) {
           </div>
         )}
         <div style={{ marginLeft: 'auto', marginBottom: 12 }}>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={reset}
             disabled={!canReset}
-            style={resetButton(canReset)}
+            style={{ padding: '6px 12px', fontSize: 13 }}
           >
             Reset to default
-          </button>
+          </Button>
         </div>
       </div>
       {warnings.length > 0 && (

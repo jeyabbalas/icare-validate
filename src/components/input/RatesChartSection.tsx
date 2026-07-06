@@ -4,6 +4,7 @@ import { fileKey, slotToFile } from '../../lib/slotFiles';
 import { slotFilled, useInputStore } from '../../state/inputStore';
 import { useAppStore } from '../../state/appStore';
 import { PlotFigure } from '../../viz/PlotFigure';
+import { cardStyle, captionStyle, cssVar, miniToggle, type RateUnits } from '../../viz/chartChrome';
 import {
   renderRateChart,
   toRateBands,
@@ -20,8 +21,6 @@ import {
 // theme flip), and hands a pure `renderRateChart` closure to the shared PlotFigure (which owns the
 // lazy Plot import + SVG/PNG download). The units toggle is lifted to InputBuilder so both charts stay
 // in sync.
-
-export type RateUnits = 'per-year' | 'per-100k';
 
 type RateSlotKey = 'modelDiseaseIncidenceRates' | 'modelCompetingIncidenceRates';
 
@@ -45,27 +44,6 @@ export interface RatesChartSectionProps {
   xDomain?: [number, number] | null;
 }
 
-const cardStyle: React.CSSProperties = {
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius)',
-  padding: 12,
-  background: 'var(--app-surface)',
-  margin: '0 0 16px',
-};
-
-const captionStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: 'var(--app-muted)',
-  margin: '8px 0 0',
-};
-
-/** Read a resolved CSS custom property, with an SSR/test-safe fallback (light-theme value). */
-function cssVar(name: string, fallback: string): string {
-  if (typeof document === 'undefined') return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
 function slugify(s: string): string {
   return (
     s
@@ -73,19 +51,6 @@ function slugify(s: string): string {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '') || 'chart'
   );
-}
-
-function miniToggle(active: boolean): React.CSSProperties {
-  return {
-    border: `1px solid ${active ? 'var(--app-accent)' : 'var(--app-border)'}`,
-    borderRadius: 'var(--app-radius)',
-    background: active ? 'var(--app-accent)' : 'var(--app-surface-2)',
-    color: active ? 'var(--app-accent-fg)' : 'var(--app-fg)',
-    padding: '4px 8px',
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: 'pointer',
-  };
 }
 
 function UnitsToggle({ units, onChange }: { units: RateUnits; onChange: (u: RateUnits) => void }) {

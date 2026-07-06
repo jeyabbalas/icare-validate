@@ -64,6 +64,53 @@ button {
   cursor: pointer;
 }
 
+/* App shell: the centered content column. Padding relaxes on phones. (Inline styles can't hold a
+   breakpoint, so the shell lives here.) */
+.app-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* App header: title block on the left, engine chip + theme toggle on the right. `flex-wrap` lets the
+   two blocks stack on narrow screens instead of crushing the title. */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--app-border);
+  margin-bottom: 12px;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 12px;
+  }
+}
+
+/* Skip link: the first focusable element, hidden off-screen until it takes keyboard focus, then it
+   slides into the top-left so keyboard/AT users can jump past the header/tabs straight to the view. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--app-radius);
+  background: var(--app-accent);
+  color: var(--app-accent-fg);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
 a {
   color: var(--app-accent);
 }

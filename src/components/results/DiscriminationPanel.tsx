@@ -1,5 +1,6 @@
 import { formatCi, formatNumber } from '../../lib/format';
-import { cardStyle } from '../../viz/chartChrome';
+import { Section } from '../ui/Section';
+import { metricRow } from '../ui/styles';
 import { Metric } from './Metric';
 import { DiscriminationKdeSection } from './DiscriminationKdeSection';
 import { RocSection } from './RocSection';
@@ -12,22 +13,6 @@ import type { NormalizedResult } from '../../services/resultNormalizer';
 // as a dedicated panel (not a sub-section of the cohort summary) so the results dashboard reads Cohort →
 // Calibration → Discrimination, each self-contained.
 
-const card: React.CSSProperties = { ...cardStyle, margin: '0 0 16px' };
-const sectionTitle: React.CSSProperties = {
-  margin: '0 0 10px',
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  color: 'var(--app-muted)',
-};
-const headerRow: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 12,
-  marginBottom: 16,
-};
-
 export function DiscriminationPanel({
   result,
   normalized,
@@ -38,9 +23,8 @@ export function DiscriminationPanel({
   const { auc, brierScore } = result;
 
   return (
-    <section style={card} aria-label="Discrimination">
-      <h3 style={sectionTitle}>Discrimination</h3>
-      <div style={headerRow}>
+    <Section title="Discrimination">
+      <div style={{ ...metricRow, marginBottom: 16 }}>
         <Metric
           label="AUC"
           value={formatNumber(auc.auc)}
@@ -58,6 +42,6 @@ export function DiscriminationPanel({
         auc={auc}
       />
       <RocSection perSubject={normalized.perSubject} isNcc={normalized.isNcc} auc={auc} />
-    </section>
+    </Section>
   );
 }

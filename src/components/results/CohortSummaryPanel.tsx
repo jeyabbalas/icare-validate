@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 import { computeCohortSummary } from '../../lib/cohortSummary';
 import { formatNumber, formatCount, formatRange, formatPercent } from '../../lib/format';
+import { Section } from '../ui/Section';
+import { metricRow } from '../ui/styles';
 import { Metric } from './Metric';
 
 // Phase 6: the cohort summary a clinician reads first — py-icare's demo notebook (cell 50) text panel,
@@ -13,23 +15,6 @@ import { Metric } from './Metric';
 // with total person-time on Follow-up. Calibration (E/O + goodness-of-fit) and Discrimination (AUC, Brier)
 // now live in their own dedicated panels, so this panel is Cohort-only.
 
-const section: React.CSSProperties = {
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius)',
-  padding: 12,
-  background: 'var(--app-surface)',
-  marginBottom: 16,
-};
-const sectionTitle: React.CSSProperties = {
-  margin: '0 0 10px',
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  color: 'var(--app-muted)',
-};
-const row: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 10 };
-
 export function CohortSummaryPanel({ normalized }: { normalized: NormalizedResult }) {
   const ps = normalized.perSubject;
   const isNcc = normalized.isNcc;
@@ -37,9 +22,8 @@ export function CohortSummaryPanel({ normalized }: { normalized: NormalizedResul
   const w = s.weighted;
 
   return (
-    <section style={section}>
-      <h3 style={sectionTitle}>Cohort</h3>
-      <div style={row}>
+    <Section title="Cohort">
+      <div style={metricRow}>
         <Metric
           label="Subjects"
           value={formatCount(s.nSubjects)}
@@ -90,6 +74,6 @@ export function CohortSummaryPanel({ normalized }: { normalized: NormalizedResul
           }
         />
       </div>
-    </section>
+    </Section>
   );
 }

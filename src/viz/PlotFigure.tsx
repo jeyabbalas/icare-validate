@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { downloadPng, downloadSvg } from '../lib/figureExport';
+import { Button } from '../components/ui/Button';
 import { registerFigure, unregisterFigure } from './figureRegistry';
 
 // Generic host for an Observable Plot figure — the app's shared chart wrapper (later viz phases reuse
@@ -49,15 +50,8 @@ const toolbarStyle: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const btnStyle: React.CSSProperties = {
-  border: '1px solid var(--app-border)',
-  borderRadius: 'var(--app-radius)',
-  background: 'var(--app-surface-2)',
-  color: 'var(--app-fg)',
-  padding: '4px 10px',
-  fontSize: 12,
-  cursor: 'pointer',
-};
+// Compact size for the toolbar download buttons; color/border/radius come from Button's `secondary` variant.
+const btnSmall: React.CSSProperties = { padding: '4px 10px', fontSize: 12 };
 
 const overlayStyle: React.CSSProperties = {
   position: 'absolute',
@@ -166,24 +160,24 @@ export function PlotFigure({ render, deps, exportName, pngBackground, toolbarExt
       <div style={toolbarStyle}>
         <div>{toolbarExtras}</div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            type="button"
-            style={btnStyle}
+          <Button
+            variant="secondary"
+            style={btnSmall}
             onClick={onSvg}
             disabled={!ready}
             aria-label="Download chart as SVG"
           >
             ⬇ SVG
-          </button>
-          <button
-            type="button"
-            style={btnStyle}
+          </Button>
+          <Button
+            variant="secondary"
+            style={btnSmall}
             onClick={onPng}
             disabled={!ready}
             aria-label="Download chart as PNG"
           >
             ⬇ PNG
-          </button>
+          </Button>
         </div>
       </div>
       <div style={{ position: 'relative', minHeight: 200 }}>
