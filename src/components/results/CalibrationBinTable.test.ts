@@ -63,7 +63,7 @@ describe('CalibrationBinTable — absolute scale', () => {
     );
     const text = container.textContent ?? '';
     expect(text).toContain('Per-bin absolute-risk calibration');
-    for (const h of ['Group', 'N', 'Predicted', 'Observed (95% CI)', 'E/O (95% CI)']) {
+    for (const h of ['Group', 'N', 'Cases', 'Predicted', 'Observed (95% CI)', 'E/O (95% CI)']) {
       expect(text).toContain(h);
     }
     expect(text).toContain('5.00%'); // observed absolute risk
@@ -72,7 +72,15 @@ describe('CalibrationBinTable — absolute scale', () => {
     expect(text).toContain('0.96'); // E/O
     expect(text).toContain('0.60–1.50'); // E/O CI
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(container.querySelectorAll('thead th')).toHaveLength(5);
+    expect(container.querySelectorAll('thead th')).toHaveLength(6);
+  });
+
+  it('shows the raw case count (no effective count) for a cohort', () => {
+    mount(createElement(CalibrationBinTable, { scale: 'absolute', bins: [bin({ nCases: 26 })] }));
+    // Cases is the 3rd column (Group · N · Cases · …); cohort → a plain integer, no "eff." aside.
+    const casesCell = container.querySelector('tbody tr td:nth-child(3)');
+    expect(casesCell?.textContent).toBe('26');
+    expect(container.textContent ?? '').not.toContain('eff.');
   });
 
   it('em-dashes a degenerate bin’s E/O instead of a misleading value', () => {
@@ -94,9 +102,20 @@ describe('CalibrationBinTable — absolute scale', () => {
     expect(eoCell?.textContent).toBe('—');
   });
 
-  it('notes inverse-probability weighting for a nested case-control study', () => {
-    mount(createElement(CalibrationBinTable, { scale: 'absolute', bins: [bin()], isNcc: true }));
+  it('shows raw + effective (design-weighted) cases and notes IPW for a nested case-control study', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'absolute',
+        bins: [bin({ nCases: 3, weightedCases: 4215 })],
+        isNcc: true,
+      }),
+    );
     expect(container.textContent).toContain('inverse-probability-weighted');
+    // Cases cell = raw sampled count with the effective (Horvitz–Thompson) count muted beside it.
+    const casesCell = container.querySelector('tbody tr td:nth-child(3)');
+    expect(casesCell?.textContent).toContain('3');
+    expect(casesCell?.textContent).toContain('eff.');
+    expect(casesCell?.textContent).toContain('4,215');
   });
 });
 

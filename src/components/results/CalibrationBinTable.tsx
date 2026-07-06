@@ -1,5 +1,5 @@
 import type { CalibrationBin } from '../../math/calibrationMath';
-import { formatNumber, formatPercent } from '../../lib/format';
+import { formatCount, formatNumber, formatPercent } from '../../lib/format';
 
 // The neat, dedicated presentation of the per-bin calibration statistics that accompanies the calibration
 // scatter (the same numbers the chart's hover tooltips carry, laid out for scanning). Fed directly by the
@@ -103,7 +103,27 @@ function groupCell(bin: CalibrationBin, boundary: string | null): React.ReactNod
   );
 }
 
-function absoluteColumns(boundaryUnit: BoundaryUnit): Column[] {
+/**
+ * The bin's event (case) count. The raw sampled count is primary; for a nested case-control study the
+ * design-weighted "effective" count (Σ outcome·frequency — the Horvitz–Thompson estimate of source-
+ * population events, which reconciles with the IPW-weighted observed risk: observed = weightedCases / weight)
+ * is shown muted alongside it — the same "raw + effective" idiom the Cohort panel uses for its Cases tile.
+ * Raw uses `toLocaleString` (an exact integer, matching the "N" cell); the weighted Σ is rounded by `formatCount`.
+ */
+function casesCell(bin: CalibrationBin, isNcc: boolean): React.ReactNode {
+  const raw = bin.nCases.toLocaleString('en-US');
+  if (!isNcc) return raw;
+  return (
+    <>
+      {raw}
+      <span style={{ color: 'var(--app-muted)', marginLeft: 4, fontSize: 11 }}>
+        (eff. {formatCount(bin.weightedCases)})
+      </span>
+    </>
+  );
+}
+
+function absoluteColumns(boundaryUnit: BoundaryUnit, isNcc: boolean): Column[] {
   // Absolute risk isn't monotonic in the linear predictor, so LP-quantile boundaries aren't clean
   // absolute-risk bands — show the bracket only when the bins ARE absolute-risk (%) intervals.
   const boundary = (b: CalibrationBin) =>
@@ -111,6 +131,7 @@ function absoluteColumns(boundaryUnit: BoundaryUnit): Column[] {
   return [
     { header: 'Group', align: 'left', render: (b) => groupCell(b, boundary(b)) },
     { header: 'N', align: 'right', render: (b) => b.n.toLocaleString('en-US') },
+    { header: 'Cases', align: 'right', render: (b) => casesCell(b, isNcc) },
     {
       header: 'Predicted',
       align: 'right',
@@ -134,11 +155,12 @@ function absoluteColumns(boundaryUnit: BoundaryUnit): Column[] {
   ];
 }
 
-function relativeColumns(boundaryUnit: BoundaryUnit): Column[] {
+function relativeColumns(boundaryUnit: BoundaryUnit, isNcc: boolean): Column[] {
   // Relative risk is monotonic in the linear predictor, so the boundary bracket always reads cleanly.
   return [
     { header: 'Group', align: 'left', render: (b) => groupCell(b, boundaryText(b, boundaryUnit)) },
     { header: 'N', align: 'right', render: (b) => b.n.toLocaleString('en-US') },
+    { header: 'Cases', align: 'right', render: (b) => casesCell(b, isNcc) },
     {
       header: 'Predicted RR',
       align: 'right',
@@ -179,7 +201,8 @@ export function CalibrationBinTable({
   isNcc = false,
   boundaryUnit = 'lp',
 }: CalibrationBinTableProps) {
-  const columns = scale === 'absolute' ? absoluteColumns(boundaryUnit) : relativeColumns(boundaryUnit);
+  const columns =
+    scale === 'absolute' ? absoluteColumns(boundaryUnit, isNcc) : relativeColumns(boundaryUnit, isNcc);
   const caption =
     scale === 'absolute' ? 'Per-bin absolute-risk calibration' : 'Per-bin relative-risk calibration';
   // The boundary bracket shows on the relative table always, and on the absolute table only when the
@@ -218,7 +241,8 @@ export function CalibrationBinTable({
       <p style={note}>
         Groups run from the lowest to the highest predicted risk.
         {showBracket && bracketDesc}
-        {isNcc && ' Observed risks and intervals are inverse-probability-weighted (nested case-control).'}
+        {isNcc &&
+          ' Observed risks and intervals are inverse-probability-weighted (nested case-control); Cases is the raw sampled event count, with the design-weighted effective count (eff.) beside it.'}
       </p>
     </div>
   );
