@@ -6,7 +6,7 @@ import {
   renderAbsoluteRiskCalibrationChart,
 } from '../../viz/absoluteRiskCalibration';
 import { EXPECTED_COLOR, OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
-import { captionStyle, cssVar } from '../../viz/chartChrome';
+import { captionStyle, cssVar, toolbarGroupLabel } from '../../viz/chartChrome';
 import { formatGofResult, formatNumber } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
 import { FitToggle } from './FitToggle';
@@ -100,7 +100,14 @@ export function AbsoluteRiskCalibrationSection({
           (showFit ? ', plus a fitted linear calibration line' : '')
         }
         pngBackground={surface}
-        toolbarExtras={<FitToggle checked={showFit} onChange={setShowFit} />}
+        toolbarExtras={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={toolbarGroupLabel} aria-hidden="true">
+              Overlay
+            </span>
+            <FitToggle checked={showFit} onChange={setShowFit} />
+          </div>
+        }
       />
       <figcaption style={captionStyle}>{caption}</figcaption>
       <CalibrationBinTable

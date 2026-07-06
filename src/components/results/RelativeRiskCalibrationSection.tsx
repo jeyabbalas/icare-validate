@@ -6,7 +6,7 @@ import {
   renderRelativeRiskCalibrationChart,
 } from '../../viz/relativeRiskCalibration';
 import { EXPECTED_COLOR, OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
-import { captionStyle, cssVar, miniToggle } from '../../viz/chartChrome';
+import { captionStyle, cssVar, miniToggle, toolbarGroupLabel } from '../../viz/chartChrome';
 import { formatGofResult } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
 import { FitToggle } from './FitToggle';
@@ -124,9 +124,19 @@ export function RelativeRiskCalibrationSection({
         }
         pngBackground={surface}
         toolbarExtras={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <FitToggle checked={showFit} onChange={setShowFit} />
-            <ScaleToggle scale={axisScale} onChange={setAxisScale} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={toolbarGroupLabel} aria-hidden="true">
+                Overlay
+              </span>
+              <FitToggle checked={showFit} onChange={setShowFit} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={toolbarGroupLabel} aria-hidden="true">
+                Axis
+              </span>
+              <ScaleToggle scale={axisScale} onChange={setAxisScale} />
+            </div>
           </div>
         }
       />

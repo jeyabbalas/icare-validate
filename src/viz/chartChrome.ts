@@ -47,3 +47,15 @@ export function miniToggle(active: boolean): CSSProperties {
     cursor: 'pointer',
   };
 }
+
+/**
+ * Label naming a toolbar control group (e.g. "Bin by", "Overlay", "Axis"), shown above the group's toggle
+ * buttons. One shared style — the re-binning toolbar (RebinControls) and the per-chart toggles both use it —
+ * so the calibration controls read as one system rather than drifting into different label treatments.
+ */
+export const toolbarGroupLabel: CSSProperties = {
+  fontWeight: 600,
+  fontSize: 13,
+  color: 'var(--app-fg)',
+  whiteSpace: 'nowrap',
+};

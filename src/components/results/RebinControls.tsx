@@ -1,5 +1,5 @@
 import { isDefaultRebin, useRebinStore, type RebinScale, type RebinMethod } from '../../state/rebinStore';
-import { miniToggle } from '../../viz/chartChrome';
+import { miniToggle, toolbarGroupLabel } from '../../viz/chartChrome';
 import { NumberField, NumericListField } from '../input/fields';
 import { Button } from '../ui/Button';
 
@@ -19,8 +19,6 @@ const group: React.CSSProperties = {
   gap: 4,
   marginBottom: 12,
 };
-const groupLabel: React.CSSProperties = { fontWeight: 600, fontSize: 13, color: 'var(--app-fg)' };
-
 /** A labelled segmented toggle built on the shared `miniToggle` button style. */
 function Segmented<T extends string>({
   label,
@@ -35,7 +33,7 @@ function Segmented<T extends string>({
 }) {
   return (
     <div style={group}>
-      <span style={groupLabel}>{label}</span>
+      <span style={toolbarGroupLabel}>{label}</span>
       <div style={{ display: 'flex', gap: 4 }} role="group" aria-label={label}>
         {options.map(([val, text]) => (
           <button
