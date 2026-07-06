@@ -18,7 +18,7 @@
 
 import type * as PlotNS from '@observablehq/plot';
 import { niceCeil, logTicks } from '../math/numeric';
-import { formatNumber, formatPercent } from '../lib/format';
+import { formatCount, formatNumber, formatPercent } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 
 /** One E/O marker: a risk group's Expected/Observed ratio + its 95% CI + tooltip. */
@@ -72,9 +72,15 @@ export function buildEoRatio(rc: RecomputedCalibration): EoRatioData {
     const boundary =
       rc.scale === 'absolute-risk' ? `${formatPercent(bin.lo)}–${formatPercent(bin.hi)}` : bin.label;
     const ciText = hasCi ? ` (95% CI ${formatNumber(lo, 2)}–${formatNumber(hi, 2)})` : '';
+    // Cases: raw sampled count; for ncc also the design-weighted "effective" count (Σ outcome·frequency),
+    // which reconciles with the IPW-weighted observed risk in the E/O ratio.
+    const casesLine = rc.isNcc
+      ? `Cases = ${bin.nCases.toLocaleString('en-US')} (effective ≈ ${formatCount(bin.weightedCases)})`
+      : `Cases = ${bin.nCases.toLocaleString('en-US')}`;
     const tip = [
       `Group ${group} of ${rc.nBins} · ${boundary}`,
       `N = ${bin.n.toLocaleString('en-US')}`,
+      casesLine,
       `Predicted ${formatPercent(bin.predictedAbsoluteRisk)} vs observed ${formatPercent(bin.observedAbsoluteRisk)}`,
       `E/O: ${formatNumber(eo, 2)}${ciText}`,
     ].join('\n');

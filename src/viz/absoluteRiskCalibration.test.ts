@@ -109,9 +109,20 @@ describe('buildAbsoluteRiskCalibration', () => {
     const tip = points[0].tip;
     expect(tip).toContain('Group 7 of 1');
     expect(tip).toContain('N = 512');
+    expect(tip).toContain('Cases = 5'); // raw sampled cases (cohort: no effective aside)
     expect(tip).toContain('Predicted: 3.10%');
     expect(tip).toContain('Observed: 3.40%');
     expect(tip).toContain('E/O:');
+  });
+
+  it('adds the design-weighted effective case count to the tooltip for a nested case-control study', () => {
+    const rc = {
+      nBins: 1,
+      isNcc: true,
+      bins: [bin({ nCases: 3, weightedCases: 4215 })],
+    } as unknown as RecomputedCalibration;
+    const { points } = buildAbsoluteRiskCalibration(rc);
+    expect(points[0].tip).toContain('Cases = 3 (effective ≈ 4,215)');
   });
 
   it('returns an empty result (domainMax ≥ 1) when every bin is degenerate', () => {

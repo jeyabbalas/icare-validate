@@ -24,7 +24,7 @@
 
 import type * as PlotNS from '@observablehq/plot';
 import { extent, niceCeil } from '../math/numeric';
-import { formatNumber, formatPercent } from '../lib/format';
+import { formatCount, formatNumber, formatPercent } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 import type { LinearFit } from '../math/calibrationFit';
 
@@ -85,9 +85,15 @@ export function buildAbsoluteRiskCalibration(rc: RecomputedCalibration): Absolut
           2,
         )}–${formatNumber(bin.upperCiExpectedByObservedRatio, 2)})`
       : '—';
+    // Cases: raw sampled count; for ncc also the design-weighted "effective" count (Σ outcome·frequency),
+    // which reconciles with the IPW-weighted observed risk (observed = effective cases / weight).
+    const casesLine = rc.isNcc
+      ? `Cases = ${bin.nCases.toLocaleString('en-US')} (effective ≈ ${formatCount(bin.weightedCases)})`
+      : `Cases = ${bin.nCases.toLocaleString('en-US')}`;
     const tip = [
       `Group ${group} of ${rc.nBins}`,
       `N = ${bin.n.toLocaleString('en-US')}`,
+      casesLine,
       `Predicted: ${formatPercent(pred)}`,
       `Observed: ${formatPercent(obs)}${ciText}`,
       `E/O: ${eoText}`,

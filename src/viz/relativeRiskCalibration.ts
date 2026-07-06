@@ -27,7 +27,7 @@
 
 import type * as PlotNS from '@observablehq/plot';
 import { niceCeil, logTicks } from '../math/numeric';
-import { formatNumber } from '../lib/format';
+import { formatCount, formatNumber } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 import type { LinearFit } from '../math/calibrationFit';
 
@@ -92,9 +92,15 @@ export function buildRelativeRiskCalibration(rc: RecomputedCalibration): Relativ
           2,
         )}–${formatNumber(bin.upperCiExpectedByObservedRatio, 2)})`
       : '—';
+    // Cases: raw sampled count; for ncc also the design-weighted "effective" count (Σ outcome·frequency),
+    // which reconciles with the IPW-weighted observed rate underlying the relative risk.
+    const casesLine = rc.isNcc
+      ? `Cases = ${bin.nCases.toLocaleString('en-US')} (effective ≈ ${formatCount(bin.weightedCases)})`
+      : `Cases = ${bin.nCases.toLocaleString('en-US')}`;
     const tip = [
       `Group ${group} of ${rc.nBins} · risk score ${bin.label}`,
       `N = ${bin.n.toLocaleString('en-US')}`,
+      casesLine,
       `Predicted RR: ${formatNumber(predRr, 2)}`,
       `Observed RR: ${formatNumber(obsRr, 2)}${ciText}`,
       `E/O: ${eoText}`,

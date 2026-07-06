@@ -54,5 +54,21 @@ describe('buildEoRatio', () => {
     expect(points.length).toBeGreaterThan(0);
     expect(points[0].tip).toContain('%');
     expect(points[0].tip).toContain('E/O:');
+    expect(points[0].tip).toContain('Cases = '); // raw sampled cases
+    expect(points[0].tip).not.toContain('effective'); // cohort fixture → no design-weighted aside
+  });
+
+  it('adds the design-weighted effective case count to the tooltip for a nested case-control study', () => {
+    // BPC3 is a real nested case-control fixture (inverse-probability weighted), so the tooltip carries the
+    // Horvitz–Thompson "effective" case count beside the raw sampled count.
+    const ncc = normalizeValidationResult(loadFixture('bpc3-covariate').result);
+    const rc = recomputeCalibration(ncc.perSubject, ncc.isNcc, {
+      scale: 'linear-predictor',
+      numberOfPercentiles: 10,
+    });
+    const { points } = buildEoRatio(rc);
+    expect(points.length).toBeGreaterThan(0);
+    expect(points[0].tip).toContain('Cases = ');
+    expect(points[0].tip).toContain('effective ≈');
   });
 });
