@@ -59,3 +59,15 @@ export const toolbarGroupLabel: CSSProperties = {
   color: 'var(--app-fg)',
   whiteSpace: 'nowrap',
 };
+
+/**
+ * A thin vertical rule separating two toolbar control groups (e.g. "Bin by" | "Method", "Overlay" | "Axis").
+ * `alignSelf: stretch` sizes it to the group height automatically. In a bottom-aligned toolbar whose reused
+ * controls carry a bottom margin (RebinControls), give the divider the same `marginBottom` so it lines up.
+ */
+export const toolbarDivider: CSSProperties = {
+  alignSelf: 'stretch',
+  width: 1,
+  background: 'var(--app-border)',
+  flex: '0 0 auto',
+};

@@ -1,5 +1,5 @@
 import { isDefaultRebin, useRebinStore, type RebinScale, type RebinMethod } from '../../state/rebinStore';
-import { miniToggle, toolbarGroupLabel } from '../../viz/chartChrome';
+import { miniToggle, toolbarDivider, toolbarGroupLabel } from '../../viz/chartChrome';
 import { NumberField, NumericListField } from '../input/fields';
 import { Button } from '../ui/Button';
 
@@ -74,6 +74,7 @@ export function RebinControls({ warnings }: { warnings: string[] }) {
           ]}
           onChange={(v) => set({ scale: v })}
         />
+        <div style={{ ...toolbarDivider, marginBottom: 12 }} aria-hidden="true" />
         <Segmented<RebinMethod>
           label="Method"
           value={method}
@@ -83,6 +84,7 @@ export function RebinControls({ warnings }: { warnings: string[] }) {
           ]}
           onChange={(v) => set({ method: v })}
         />
+        <div style={{ ...toolbarDivider, marginBottom: 12 }} aria-hidden="true" />
         {method === 'quantiles' ? (
           <div style={{ width: 120 }}>
             <NumberField

@@ -6,7 +6,7 @@ import {
   renderRelativeRiskCalibrationChart,
 } from '../../viz/relativeRiskCalibration';
 import { EXPECTED_COLOR, OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
-import { captionStyle, cssVar, miniToggle, toolbarGroupLabel } from '../../viz/chartChrome';
+import { captionStyle, cssVar, miniToggle, toolbarDivider, toolbarGroupLabel } from '../../viz/chartChrome';
 import { formatGofResult } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
 import { FitToggle } from './FitToggle';
@@ -131,6 +131,7 @@ export function RelativeRiskCalibrationSection({
               </span>
               <FitToggle checked={showFit} onChange={setShowFit} />
             </div>
+            <div style={toolbarDivider} aria-hidden="true" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={toolbarGroupLabel} aria-hidden="true">
                 Axis
