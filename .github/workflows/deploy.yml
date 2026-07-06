@@ -29,6 +29,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      # Quality gates run before the network-heavy vendor step so a red suite fails fast and never
+      # ships. Both are hermetic — eslint and the Vitest suite read committed fixtures, not the
+      # vendored Pyodide/DuckDB assets — so they need no vendoring.
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
       # Order matters: `vendor` reads the Pyodide version from node_modules/pyodide,
       # so it must run after `npm ci` and before `build`. Network is needed here only.
       - name: Vendor Pyodide runtime (self-hosted, offline)
