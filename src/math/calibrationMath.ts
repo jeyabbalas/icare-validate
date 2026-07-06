@@ -37,6 +37,8 @@ export interface CalibrationBin {
   hi: number;
   n: number; // realized subject count
   weight: number; // Σ frequency (nested case-control) or n (cohort)
+  nCases: number; // raw event count Σ[outcome = 1] — the analyzed-sample cases (precision anchor)
+  weightedCases: number; // Σ outcome·frequency (ncc, Horvitz–Thompson) or nCases (cohort); observed = weightedCases / weight
   observedAbsoluteRisk: number;
   predictedAbsoluteRisk: number;
   varianceAbsoluteRisk: number;
@@ -172,8 +174,9 @@ export function recomputeCalibration(
 
   // ---- Per-bin observed / predicted / variance -----------------------------
   const cnt = new Array<number>(nBins).fill(0);
+  const casesRaw = new Array<number>(nBins).fill(0); // raw Σ[outcome = 1] — the sampled cases, unweighted
   const sumW = new Float64Array(nBins); // Σ frequency (ncc) or n (cohort)
-  const sumObs = new Float64Array(nBins); // Σ outcome (cohort) or Σ outcome·freq (ncc)
+  const sumObs = new Float64Array(nBins); // Σ outcome (cohort) or Σ outcome·freq (ncc) — the weighted cases
   const sumPred = new Float64Array(nBins); // Σ risk (cohort) or Σ risk·freq (ncc)
   let nExcluded = 0; // subjects whose score was NaN/unbinnable (binIndex −1) — dropped from every bin
   for (let i = 0; i < binIndex.length; i += 1) {
@@ -183,6 +186,7 @@ export function recomputeCalibration(
       continue;
     }
     cnt[b] += 1;
+    if (outcome[i] === 1) casesRaw[b] += 1; // precision anchor, mirroring roc.ts's raw `nCases` tally
     const w = isNcc ? frequency![i] : 1;
     sumW[b] += w;
     sumObs[b] += outcome[i] * w;
@@ -251,6 +255,8 @@ export function recomputeCalibration(
       hi: meta.hi,
       n: cnt[b],
       weight: sumW[b],
+      nCases: casesRaw[b],
+      weightedCases: sumObs[b],
       observedAbsoluteRisk: o,
       predictedAbsoluteRisk: p,
       varianceAbsoluteRisk: v,

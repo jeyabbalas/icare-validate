@@ -44,6 +44,8 @@ describe('recomputeCalibration — cohort (unweighted)', () => {
     expect(rc.nBins).toBe(2);
     expect(rc.bins.map((b) => b.n)).toEqual([4, 4]);
     expect(rc.bins.map((b) => b.weight)).toEqual([4, 4]); // cohort weight = count
+    expect(rc.bins.map((b) => b.nCases)).toEqual([1, 3]); // raw case counts: [0,1,0,0] then [1,0,1,1]
+    expect(rc.bins.map((b) => b.weightedCases)).toEqual([1, 3]); // cohort: weighted = raw; observed = cases/n
     expect(rc.bins[0].observedAbsoluteRisk).toBeCloseTo(0.25, 12);
     expect(rc.bins[1].observedAbsoluteRisk).toBeCloseTo(0.75, 12);
     expect(rc.bins[0].predictedAbsoluteRisk).toBeCloseTo(0.25, 12);
@@ -95,6 +97,8 @@ describe('recomputeCalibration — nested case-control (weighted)', () => {
     expect(rc.nBins).toBe(2);
     expect(rc.bins.map((b) => b.weight)).toEqual([4, 8]); // Σ frequency
     expect(rc.bins.map((b) => b.n)).toEqual([2, 2]);
+    expect(rc.bins.map((b) => b.nCases)).toEqual([1, 1]); // raw sampled cases (unweighted)
+    expect(rc.bins.map((b) => b.weightedCases)).toEqual([2, 4]); // Σ outcome·freq (H–T); observed = weightedCases / weight
     expect(rc.bins[0].observedAbsoluteRisk).toBeCloseTo(0.5, 12);
     expect(rc.bins[1].observedAbsoluteRisk).toBeCloseTo(0.5, 12);
     expect(rc.bins[0].predictedAbsoluteRisk).toBeCloseTo(0.3, 12);

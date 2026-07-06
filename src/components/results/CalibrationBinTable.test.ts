@@ -18,6 +18,8 @@ function bin(overrides: Partial<CalibrationBin> = {}): CalibrationBin {
     hi: 0,
     n: 512,
     weight: 512,
+    nCases: 26,
+    weightedCases: 26,
     observedAbsoluteRisk: 0.05,
     predictedAbsoluteRisk: 0.048,
     varianceAbsoluteRisk: 0.0001,
