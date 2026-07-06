@@ -114,7 +114,7 @@ export function DataTablePanel({ source, tableName, title, height = 480 }: DataT
   return (
     <div>
       {title && (
-        <h4
+        <h3
           title={title}
           style={{
             margin: '0 0 8px',
@@ -127,7 +127,7 @@ export function DataTablePanel({ source, tableName, title, height = 480 }: DataT
           }}
         >
           {title}
-        </h4>
+        </h3>
       )}
       <div style={{ position: 'relative', height }}>
         <div ref={hostRef} className="dt-preview-host" style={{ height }} />

@@ -3,6 +3,7 @@ import { fileKey } from '../../lib/slotFiles';
 import { slotFilled, useInputStore, type FileSlot } from '../../state/inputStore';
 import { DataTablePanel } from '../DataTablePanel';
 import { MergedDataTablePanel } from './MergedDataTablePanel';
+import { tabListKeyDown } from '../ui/tablist';
 
 // Collapsed-by-default preview of the large tabular inputs (so DuckDB never boots on page load).
 // Tabbed: the cohort/study file always (merged with the covariate profile when they are row-aligned —
@@ -117,6 +118,8 @@ export function DataPreviewSection() {
           <div style={{ marginTop: 12 }}>
             <div
               role="tablist"
+              aria-label="Preview tables"
+              onKeyDown={tabListKeyDown}
               style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}
             >
               {tabs.map((t) => (
@@ -124,7 +127,10 @@ export function DataPreviewSection() {
                   key={t.id}
                   type="button"
                   role="tab"
+                  id={`dt-tab-${t.id}`}
                   aria-selected={t.id === activeId}
+                  aria-controls={`dt-panel-${t.id}`}
+                  tabIndex={t.id === activeId ? 0 : -1}
                   onClick={() => {
                     setActive(t.id);
                     markVisited(t.id);
@@ -147,7 +153,14 @@ export function DataPreviewSection() {
             {tabs
               .filter((t) => visited.has(t.id))
               .map((t) => (
-                <div key={t.id} style={{ display: t.id === activeId ? 'block' : 'none' }}>
+                <div
+                  key={t.id}
+                  role="tabpanel"
+                  id={`dt-panel-${t.id}`}
+                  aria-labelledby={`dt-tab-${t.id}`}
+                  tabIndex={0}
+                  style={{ display: t.id === activeId ? 'block' : 'none' }}
+                >
                   {t.merge ? (
                     <MergedDataTablePanel
                       key={`merged:${fileKey(t.slot)}+${fileKey(t.merge)}`}

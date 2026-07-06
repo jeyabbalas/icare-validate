@@ -103,4 +103,39 @@ describe('CodePanel', () => {
     expect(buttonTexts()).toContain('Download validate.qmd');
     act(() => root.unmount());
   });
+
+  it('language tabs are an ARIA tablist with roving tabIndex + arrow-key navigation', () => {
+    fillValidInputs();
+    const root = render();
+    const tablist = container.querySelector('[role="tablist"]') as HTMLElement;
+    const tabs = () => [...tablist.querySelectorAll<HTMLElement>('[role="tab"]')];
+
+    // Selected (Python) tab is the sole tab stop; each tab controls the shared tabpanel.
+    expect(tabs().map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+    expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+    expect(tabs()[0].getAttribute('aria-controls')).toBe('code-panel');
+    const panel = container.querySelector('#code-panel');
+    expect(panel?.getAttribute('role')).toBe('tabpanel');
+    expect(panel?.getAttribute('aria-labelledby')).toBe('code-tab-python');
+
+    // ArrowRight from the focused Python tab moves selection (and focus) to JavaScript.
+    const python = tabs()[0];
+    python.focus();
+    act(() => {
+      python.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    });
+    const after = tabs();
+    expect(after[1].getAttribute('aria-selected')).toBe('true');
+    expect(after.map((t) => t.getAttribute('tabindex'))).toEqual(['-1', '0', '-1']);
+    expect(document.activeElement).toBe(after[1]);
+    expect(preText()).toContain("import { loadICARE } from 'wasm-icare'");
+
+    // Wraps: ArrowLeft from the first tab jumps to the last (R).
+    tabs()[0].focus();
+    act(() => {
+      tabs()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    });
+    expect(tabs()[2].getAttribute('aria-selected')).toBe('true');
+    act(() => root.unmount());
+  });
 });

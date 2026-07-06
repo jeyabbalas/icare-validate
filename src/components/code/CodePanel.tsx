@@ -4,6 +4,7 @@ import { canBuildValidateOptions, useInputStore } from '../../state/inputStore';
 import { generateCode, type CodeLanguage } from '../../lib/codegen';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { tabListKeyDown } from '../ui/tablist';
 import { CodeBlock } from './CodeBlock';
 
 // The "Code" tab: copyable Python / JavaScript / R code that reproduces the current validation in the
@@ -75,14 +76,17 @@ export function CodePanel() {
         <code>EDIT</code>) to match your workspace.
       </p>
 
-      <div style={toggleRow} role="tablist" aria-label="Language">
+      <div style={toggleRow} role="tablist" aria-label="Language" onKeyDown={tabListKeyDown}>
         {LANGS.map((l) => (
           <Button
             key={l.id}
             variant="toggle"
             active={lang === l.id}
-            aria-selected={lang === l.id}
             role="tab"
+            id={`code-tab-${l.id}`}
+            aria-selected={lang === l.id}
+            aria-controls="code-panel"
+            tabIndex={lang === l.id ? 0 : -1}
             onClick={() => setLang(l.id)}
             style={{ padding: '6px 12px', fontSize: 13 }}
           >
@@ -91,25 +95,28 @@ export function CodePanel() {
         ))}
       </div>
 
-      {lang === 'javascript' && (
-        <div style={{ ...toggleRow, marginTop: 8 }} aria-label="JavaScript target">
-          {(['node', 'browser'] as JsTarget[]).map((t) => (
-            <Button
-              key={t}
-              variant="toggle"
-              active={jsTarget === t}
-              onClick={() => setJsTarget(t)}
-              style={{ padding: '4px 10px' }}
-            >
-              {t === 'node' ? 'Node.js' : 'Browser (CDN)'}
-            </Button>
-          ))}
-        </div>
-      )}
+      <div id="code-panel" role="tabpanel" aria-labelledby={`code-tab-${lang}`}>
+        {lang === 'javascript' && (
+          <div style={{ ...toggleRow, marginTop: 8 }} role="group" aria-label="JavaScript target">
+            {(['node', 'browser'] as JsTarget[]).map((t) => (
+              <Button
+                key={t}
+                variant="toggle"
+                active={jsTarget === t}
+                aria-pressed={jsTarget === t}
+                onClick={() => setJsTarget(t)}
+                style={{ padding: '4px 10px' }}
+              >
+                {t === 'node' ? 'Node.js' : 'Browser (CDN)'}
+              </Button>
+            ))}
+          </div>
+        )}
 
-      <p style={introStyle}>{INTRO[codeLang]}</p>
+        <p style={introStyle}>{INTRO[codeLang]}</p>
 
-      <CodeBlock code={generated.code} filename={generated.filename} />
+        <CodeBlock code={generated.code} filename={generated.filename} />
+      </div>
     </div>
   );
 }

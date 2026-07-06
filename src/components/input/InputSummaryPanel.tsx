@@ -37,7 +37,7 @@ export function InputSummaryPanel() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <h3 style={{ margin: 0, fontSize: 14 }}>Input summary</h3>
+        <h2 style={{ margin: 0, fontSize: 14 }}>Input summary</h2>
         {summary.isNcc && <Badge tone="accent">Nested case-control</Badge>}
       </div>
 

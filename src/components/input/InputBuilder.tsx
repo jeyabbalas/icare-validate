@@ -218,7 +218,7 @@ function ModeToggle() {
   };
   return (
     <Card style={cardGap}>
-      <h3 style={cardTitle}>Validation mode</h3>
+      <h2 style={cardTitle}>Validation mode</h2>
       <div style={{ display: 'flex', gap: 12 }}>
         {option('A', 'A · Build model from parameters', 'Provide formula, β, rates, reference')}
         {option(
@@ -244,7 +244,7 @@ function ConfigPanel() {
 
   return (
     <Card style={cardGap}>
-      <h3 style={cardTitle}>Configuration</h3>
+      <h2 style={cardTitle}>Configuration</h2>
       <div className="config-grid">
         <RiskIntervalControl
           value={riskInterval}
@@ -330,7 +330,7 @@ function ModeAPanel() {
 
   return (
     <Card style={cardGap}>
-      <h3 style={cardTitle}>Model inputs</h3>
+      <h2 style={cardTitle}>Model inputs</h2>
       <StudySlot />
       <ModelFileSlots specs={MODE_A_PRIMARY} />
 
@@ -377,7 +377,7 @@ function ModeBPanel() {
 
   return (
     <Card style={cardGap}>
-      <h3 style={cardTitle}>Pre-computed risks</h3>
+      <h2 style={cardTitle}>Pre-computed risks</h2>
       <StudySlot />
       <p style={{ fontSize: 12, color: 'var(--app-muted)', marginTop: 0 }}>
         Your study data must contain <strong>both</strong> a predicted-risk column named{' '}

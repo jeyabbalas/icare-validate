@@ -136,7 +136,7 @@ export function ModelEquationSection() {
   if (mode === 'B') {
     return (
       <div style={cardStyle}>
-        <h3 style={cardTitle}>Model</h3>
+        <h2 style={cardTitle}>Model</h2>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--app-muted)' }}>
           Pre-computed mode: the model is not rebuilt from a formula. Predicted absolute risk is read
           from column <code>{predictedRisk || '—'}</code> and the linear predictor from{' '}
@@ -148,7 +148,7 @@ export function ModelEquationSection() {
 
   return (
     <div style={cardStyle}>
-      <h3 style={cardTitle}>Model</h3>
+      <h2 style={cardTitle}>Model</h2>
       <ModelEquationBody formulaSlot={formulaSlot} logOrSlot={logOrSlot} />
       {slotFilled(snpSlot) && <SnpPanel slot={snpSlot} />}
     </div>

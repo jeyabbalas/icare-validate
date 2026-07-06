@@ -22,9 +22,14 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <AppHeader />
       <Stepper />
-      {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
+      <main id="main">
+        {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
+      </main>
     </div>
   );
 }

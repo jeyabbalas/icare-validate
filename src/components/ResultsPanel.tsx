@@ -51,14 +51,14 @@ export function ResultsPanel() {
 
   if (!result || !normalized) {
     return (
-      <main style={emptyCard}>
+      <div style={emptyCard}>
         <p style={{ marginTop: 0, color: 'var(--app-muted)' }}>
           No results yet — run a validation from the Input tab.
         </p>
         <Button variant="secondary" onClick={() => setStep('input')}>
           ← Back to input
         </Button>
-      </main>
+      </div>
     );
   }
 
@@ -136,7 +136,7 @@ function ResultsContent({
         : 'Mode B · precomputed risks';
 
   return (
-    <main>
+    <>
       <div style={headerRow}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18 }}>{info.datasetName || 'Validation results'}</h2>
@@ -213,7 +213,7 @@ function ResultsContent({
       <DiscriminationPanel result={result} normalized={normalized} />
 
       {import.meta.env.DEV && <DevInspector result={result} />}
-    </main>
+    </>
   );
 }
 
