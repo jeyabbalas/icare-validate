@@ -155,9 +155,23 @@ describe.each<FixtureName>(['icare-lit-ge50', 'bpc3-covariate'])('resultsExport 
   it('currentCalibrationCsv: one row per bin, degenerate flag, comma-safe interval labels', () => {
     const parsed = csvParse(currentCalibrationCsv(rc));
     expect(parsed.length).toBe(rc.bins.length);
-    expect(parsed.columns).toEqual(expect.arrayContaining(['lo', 'hi', 'degenerate']));
+    expect(parsed.columns).toEqual(
+      expect.arrayContaining(['lo', 'hi', 'n_cases', 'weighted_cases', 'degenerate']),
+    );
     // LP-decile labels contain commas; a clean round-trip proves they were quoted.
     expect(parsed.some((r) => (r.category ?? '').includes(','))).toBe(true);
+    // Case counts reconcile with the weighted observed risk: weighted_cases / weight = observed risk.
+    // n_cases is the raw integer count; for a cohort it equals weighted_cases (all weights = 1).
+    const nondegen = parsed.filter((r) => r.degenerate === 'false');
+    expect(nondegen.length).toBeGreaterThan(0);
+    for (const r of nondegen) {
+      expect(Number.isInteger(Number(r.n_cases))).toBe(true);
+      expect(Number(r.weighted_cases) / Number(r.weight)).toBeCloseTo(
+        Number(r.observed_absolute_risk),
+        9,
+      );
+      if (!normalized.isNcc) expect(Number(r.weighted_cases)).toBe(Number(r.n_cases));
+    }
   });
 
   it('cohortSummary CSV/JSON reflect nested-case-control-ness', () => {
