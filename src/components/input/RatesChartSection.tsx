@@ -172,6 +172,7 @@ export function RatesChartSection({
           render={render}
           deps={[series, units, theme, ageMin ?? -1, ageMax ?? -1, xDomain?.[0] ?? -1, xDomain?.[1] ?? -1]}
           exportName={slug}
+          ariaLabel={`Line chart of ${title.toLowerCase()} by age`}
           pngBackground={surface}
           toolbarExtras={<UnitsToggle units={units} onChange={onUnitsChange} />}
         />

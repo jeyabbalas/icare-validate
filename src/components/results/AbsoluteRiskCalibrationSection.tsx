@@ -86,6 +86,7 @@ export function AbsoluteRiskCalibrationSection({
         render={render}
         deps={[points, domainMax, theme]}
         exportName="absolute-risk-calibration"
+        ariaLabel="Scatter of observed versus predicted absolute risk per bin, with 95% confidence whiskers and an identity reference line"
         pngBackground={surface}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>

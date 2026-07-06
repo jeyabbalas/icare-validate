@@ -68,6 +68,7 @@ export function DiscriminationKdeSection({
         render={render}
         deps={[data, theme]}
         exportName="discrimination-risk-density"
+        ariaLabel="Density plot of predicted risk for cases versus controls"
         pngBackground={surface}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>

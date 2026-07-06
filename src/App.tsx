@@ -4,6 +4,7 @@ import { Stepper } from './components/Stepper';
 import { InputBuilder } from './components/input/InputBuilder';
 import { ResultsPanel } from './components/ResultsPanel';
 import { CodePanel } from './components/code/CodePanel';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ensureLoaded } from './services/icareService';
 import { useAppStore } from './state/appStore';
 
@@ -28,7 +29,10 @@ export default function App() {
       <AppHeader />
       <Stepper />
       <main id="main">
-        {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
+        {/* Keyed by step so a crash in one view is cleared by switching tabs (a fresh boundary). */}
+        <ErrorBoundary key={step}>
+          {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
+        </ErrorBoundary>
       </main>
     </div>
   );

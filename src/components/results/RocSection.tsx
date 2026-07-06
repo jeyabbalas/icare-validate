@@ -67,6 +67,7 @@ export function RocSection({
         render={render}
         deps={[data, theme]}
         exportName="discrimination-roc-curve"
+        ariaLabel="ROC curve of the risk score, with the chance diagonal and the Youden-optimal point"
         pngBackground={surface}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>

@@ -109,6 +109,7 @@ export function RelativeRiskCalibrationSection({
         render={render}
         deps={[points, linearMax, logBound, theme, axisScale]}
         exportName="relative-risk-calibration"
+        ariaLabel="Scatter of observed versus predicted relative risk per bin, with an identity reference line"
         pngBackground={surface}
         toolbarExtras={<ScaleToggle scale={axisScale} onChange={setAxisScale} />}
       />

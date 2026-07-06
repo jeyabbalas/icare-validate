@@ -61,6 +61,7 @@ export function EoRatioSection({ rc }: { rc: RecomputedCalibration }) {
         render={render}
         deps={[points, groups, logBound, theme]}
         exportName="expected-observed-by-group"
+        ariaLabel="Expected-over-observed ratio per bin with confidence intervals, on a log axis about a reference line at 1"
         pngBackground={surface}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>

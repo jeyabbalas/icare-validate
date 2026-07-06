@@ -2,7 +2,9 @@
 // from the provisional ResultsPanel (its inner `Metric`) into a shared component so the cohort-summary
 // groups — and later results sections — reuse one card. `sub` is a ReactNode (not just a string) so a card
 // can stack more than one sub-line (e.g. a range line plus a nested-case-control weighted line). An
-// optional `title` sets the native tooltip, used to explain a nuanced tile (e.g. the censoring model).
+// optional `title` explains a nuanced tile (e.g. the censoring model): it sets the native mouse tooltip
+// AND, so the explanation isn't stranded there, makes the tile keyboard-focusable with the label + value
+// + hint in an aria-label. Untitled tiles stay plain (no extra tab stops).
 
 const card: React.CSSProperties = {
   border: '1px solid var(--app-border)',
@@ -32,8 +34,9 @@ export function Metric({
   sub?: React.ReactNode;
   title?: string;
 }) {
+  const hintProps = title ? { tabIndex: 0, 'aria-label': `${label}: ${value}. ${title}` } : null;
   return (
-    <div style={card} title={title}>
+    <div style={card} title={title} {...hintProps}>
       <div style={labelStyle}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>{value}</div>
       {sub != null && sub !== '' && <div style={subStyle}>{sub}</div>}

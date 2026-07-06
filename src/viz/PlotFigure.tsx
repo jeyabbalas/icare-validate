@@ -40,6 +40,12 @@ export interface PlotFigureProps {
   pngBackground?: string;
   /** Optional controls (e.g. a units toggle) shown at the left of the toolbar, beside the download buttons. */
   toolbarExtras?: React.ReactNode;
+  /**
+   * Accessible description of the chart. When set, the mounted <svg> is marked `role="img"` with this as
+   * its `aria-label`, so a screen reader announces one meaningful summary instead of traversing the
+   * mark-level SVG nodes. (The wrapping <figure> still carries the short section title + figcaption.)
+   */
+  ariaLabel?: string;
 }
 
 const toolbarStyle: React.CSSProperties = {
@@ -63,11 +69,21 @@ const overlayStyle: React.CSSProperties = {
   pointerEvents: 'none',
 };
 
-export function PlotFigure({ render, deps, exportName, pngBackground, toolbarExtras }: PlotFigureProps) {
+export function PlotFigure({
+  render,
+  deps,
+  exportName,
+  pngBackground,
+  toolbarExtras,
+  ariaLabel,
+}: PlotFigureProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const renderRef = useRef(render);
   renderRef.current = render; // latest closure, captured before the effects run
+
+  const ariaRef = useRef(ariaLabel);
+  ariaRef.current = ariaLabel; // latest label, captured before the effects run (like renderRef)
 
   const bgRef = useRef(pngBackground);
   bgRef.current = pngBackground; // latest backdrop, captured before the effects run (like renderRef)
@@ -113,6 +129,12 @@ export function PlotFigure({ render, deps, exportName, pngBackground, toolbarExt
           svgRef.current = null;
           setStatus('empty');
           return;
+        }
+        // Present the chart to assistive tech as a single labeled image (its interior marks are
+        // decorative once summarized); the download SVG/PNG carry the label with them.
+        if (ariaRef.current) {
+          svg.setAttribute('role', 'img');
+          svg.setAttribute('aria-label', ariaRef.current);
         }
         hostRef.current.replaceChildren(svg); // replaces any prior svg — no node leak
         svgRef.current = svg;

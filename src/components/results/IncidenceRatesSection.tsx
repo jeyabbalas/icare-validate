@@ -89,6 +89,7 @@ export function IncidenceRatesSection({ incidence, isNcc = false }: IncidenceRat
         render={render}
         deps={[points, units, theme]}
         exportName="age-specific-incidence-rates"
+        ariaLabel="Line chart comparing study and population age-specific incidence rates"
         pngBackground={surface}
         toolbarExtras={<UnitsToggle units={units} onChange={setUnits} />}
       />
