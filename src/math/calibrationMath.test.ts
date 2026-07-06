@@ -261,3 +261,77 @@ describe('recomputeCalibration — degenerate / guarded cases (never throws)', (
     expect(Number.isNaN(rc.relativeRiskGof.pValue)).toBe(true);
   });
 });
+
+describe('recomputeCalibration — calibration-slope fits (weighted least squares)', () => {
+  it('perfect calibration → both fitted slopes ≈ 1, intercepts ≈ 0', () => {
+    // observed == predicted in each of the two balanced bins (the cohort case above): both scatter points
+    // sit exactly on y = x, so the fitted line IS the identity.
+    const ps = makePerSubject({
+      lp: [1, 2, 3, 4, 5, 6, 7, 8],
+      outcome: [0, 1, 0, 0, 1, 0, 1, 1],
+      risk: [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9],
+    });
+    const rc = recomputeCalibration(ps, false, { scale: 'linear-predictor', numberOfPercentiles: 2 });
+    expect(rc.absoluteRiskFit.defined).toBe(true);
+    expect(rc.absoluteRiskFit.nPoints).toBe(2);
+    expect(rc.absoluteRiskFit.slope).toBeCloseTo(1, 9);
+    expect(rc.absoluteRiskFit.intercept).toBeCloseTo(0, 9);
+    expect(rc.relativeRiskFit.defined).toBe(true);
+    expect(rc.relativeRiskFit.slope).toBeCloseTo(1, 9);
+    expect(rc.relativeRiskFit.intercept).toBeCloseTo(0, 9);
+  });
+
+  it('recovers a known miscalibration slope, and separates absolute from relative calibration', () => {
+    // 20 subjects in two LP bins of 10. Absolute risk: (pred, obs) = (0.2, 0.1) and (0.6, 0.3) — observed
+    // is exactly HALF of predicted, so the absolute-risk fit is slope 0.5 through the origin. But that is a
+    // pure scale error: the RELATIVE risks are (0.5, 1.5) for both predicted and observed, so the
+    // relative-risk fit stays slope 1. The two plots measure different things and the fits track that.
+    const lp = Array.from({ length: 20 }, (_, i) => i + 1);
+    const risk = [...Array<number>(10).fill(0.2), ...Array<number>(10).fill(0.6)];
+    const outcome = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0];
+    const rc = recomputeCalibration(makePerSubject({ lp, risk, outcome }), false, {
+      scale: 'linear-predictor',
+      numberOfPercentiles: 2,
+    });
+    expect(rc.bins.map((b) => b.n)).toEqual([10, 10]);
+    expect(rc.absoluteRiskFit.slope).toBeCloseTo(0.5, 9);
+    expect(rc.absoluteRiskFit.intercept).toBeCloseTo(0, 9);
+    expect(rc.relativeRiskFit.slope).toBeCloseTo(1, 9);
+    expect(rc.relativeRiskFit.intercept).toBeCloseTo(0, 9);
+  });
+
+  it('excludes degenerate bins from the fit (an empty middle bin does not poison it)', () => {
+    // Custom cutoffs [3, 7] on the LP leave the middle bin empty (kept, NaN stats, degenerate). The two
+    // populated bins sit at (0.15, 0.5) and (0.35, 0.5) → a flat pair, slope 0 / intercept 0.5. Were the
+    // empty bin included, the fit would be NaN.
+    const ps = makePerSubject({
+      lp: [1, 2, 8, 9],
+      outcome: [0, 1, 0, 1],
+      risk: [0.1, 0.2, 0.3, 0.4],
+    });
+    const rc = recomputeCalibration(ps, false, { scale: 'linear-predictor', cutoffs: [3, 7] });
+    expect(rc.nBins).toBe(3);
+    expect(rc.bins[1].degenerate).toBe(true);
+    expect(rc.absoluteRiskFit.defined).toBe(true);
+    expect(rc.absoluteRiskFit.nPoints).toBe(2); // only the two populated bins
+    expect(rc.absoluteRiskFit.slope).toBeCloseTo(0, 9);
+    expect(rc.absoluteRiskFit.intercept).toBeCloseTo(0.5, 9);
+  });
+
+  it('single non-degenerate bin → fits undefined (need ≥ 2 points), no throw', () => {
+    const ps = makePerSubject({ lp: [5, 5, 5, 5], outcome: [0, 1, 0, 1], risk: [0.4, 0.5, 0.6, 0.5] });
+    const rc = recomputeCalibration(ps, false, { scale: 'linear-predictor', numberOfPercentiles: 10 });
+    expect(rc.nBins).toBe(1);
+    expect(rc.absoluteRiskFit.defined).toBe(false);
+    expect(Number.isNaN(rc.absoluteRiskFit.slope)).toBe(true);
+    expect(rc.relativeRiskFit.defined).toBe(false);
+  });
+
+  it('all bins degenerate (observed 0 and 1) → fits undefined with zero usable points', () => {
+    const ps = makePerSubject({ lp: [1, 2, 3, 4], outcome: [0, 0, 1, 1], risk: [0.1, 0.2, 0.8, 0.9] });
+    const rc = recomputeCalibration(ps, false, { scale: 'linear-predictor', numberOfPercentiles: 2 });
+    expect(rc.absoluteRiskFit.defined).toBe(false);
+    expect(rc.absoluteRiskFit.nPoints).toBe(0);
+    expect(rc.relativeRiskFit.defined).toBe(false);
+  });
+});

@@ -17,6 +17,7 @@ import { mean } from './numeric';
 import { assignBins, cutoffEdges, quantileEdges, type BinMeta } from './binning';
 import { diagFromVec, matMul, quadraticFormInverse, transpose } from './linalg';
 import { chi2SurvivalLossy, logWaldCi, waldCi } from './stats';
+import { weightedLinearFit, type LinearFit, type WlsPoint } from './calibrationFit';
 
 export type BinScale = 'linear-predictor' | 'absolute-risk';
 
@@ -71,6 +72,8 @@ export interface RecomputedCalibration {
   meanPredictedProb: number; // relative-risk normalization denominator (predicted)
   absoluteRiskGof: GofResult; // Hosmer–Lemeshow, df = nBins
   relativeRiskGof: GofResult; // df = nBins − 1
+  absoluteRiskFit: LinearFit; // inverse-variance WLS slope/intercept of observed-on-predicted absolute risk
+  relativeRiskFit: LinearFit; // same for relative risk, fit on the linear RR scale (slope 1 = calibrated)
   warnings: string[]; // e.g. dropped out-of-range custom cutoffs
 }
 
@@ -288,6 +291,35 @@ export function recomputeCalibration(
     defined: nBins >= 2 && Number.isFinite(rr.chi2),
   };
 
+  // ---- Calibration-slope fits (weighted least squares) ---------------------
+  // Each scatter's observed-on-predicted line, fit by INVERSE-VARIANCE-weighted least squares over the
+  // non-degenerate bins — exactly the markers the plots draw. Slope 1 = perfect calibration. Weighting by
+  // 1/Var (rather than plain OLS) keeps small, noisy bins — routine after interactive re-binning — from
+  // swinging the slope, and makes the line respect the same 95% CIs drawn as whiskers.
+  const absFitPoints: WlsPoint[] = [];
+  const relFitPoints: WlsPoint[] = [];
+  for (let b = 0; b < nBins; b += 1) {
+    if (outBins[b].degenerate) continue;
+    // Absolute-risk plot: x = predicted, y = observed (proportions); weight = 1/Var(observed).
+    const o = observed[b];
+    const p = predicted[b];
+    const v = varianceAr[b];
+    if (Number.isFinite(o) && Number.isFinite(p) && v > 0 && Number.isFinite(v)) {
+      absFitPoints.push({ x: p, y: o, w: 1 / v });
+    }
+    // Relative-risk plot (fit on the linear RR scale): x = predicted RR, y = observed RR. The observed-RR
+    // variance comes from the delta method on the log scale: Var(obsRR) ≈ obsRR² · stddevLogRr².
+    const oRr = observedRr[b];
+    const pRr = predictedRr[b];
+    const sdLog = rr.stddevLogRr[b];
+    const vRr = oRr * oRr * sdLog * sdLog;
+    if (oRr > 0 && pRr > 0 && Number.isFinite(pRr) && vRr > 0 && Number.isFinite(vRr)) {
+      relFitPoints.push({ x: pRr, y: oRr, w: 1 / vRr });
+    }
+  }
+  const absoluteRiskFit = weightedLinearFit(absFitPoints);
+  const relativeRiskFit = weightedLinearFit(relFitPoints);
+
   return {
     scale: options.scale,
     isNcc,
@@ -300,6 +332,8 @@ export function recomputeCalibration(
     meanPredictedProb,
     absoluteRiskGof,
     relativeRiskGof,
+    absoluteRiskFit,
+    relativeRiskFit,
     warnings,
   };
 }
