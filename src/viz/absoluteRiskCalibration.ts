@@ -26,6 +26,7 @@ import type * as PlotNS from '@observablehq/plot';
 import { extent, niceCeil } from '../math/numeric';
 import { formatNumber, formatPercent } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
+import type { LinearFit } from '../math/calibrationFit';
 
 /** One calibration marker: a risk group's predicted vs observed absolute risk (percent), + its CI + tip. */
 export interface CalibrationScatterPoint {
@@ -122,6 +123,12 @@ export interface AbsoluteRiskCalibrationChartOptions {
   observedColor: string;
   /** Overall study-level stats baked bottom-right (e.g. E/O + Hosmer–Lemeshow), muted. */
   annotationLines: string[];
+  /** Fitted calibration line (from the recompute engine); drawn only when `showFit`. */
+  fit?: LinearFit;
+  /** Whether to overlay the fitted line + show its slope in the legend (toolbar toggle; off by default). */
+  showFit?: boolean;
+  /** Resolved color for the fitted line + its legend swatch. */
+  fitColor?: string;
   colors: AbsoluteRiskCalibrationColors;
   width: number;
   ariaLabel?: string;
@@ -136,7 +143,9 @@ export function renderAbsoluteRiskCalibrationChart(
   Plot: typeof PlotNS,
   opts: AbsoluteRiskCalibrationChartOptions,
 ): SVGSVGElement {
-  const { points, domainMax, title, observedColor, annotationLines, colors, width, ariaLabel } = opts;
+  const { points, domainMax, title, observedColor, annotationLines, colors, width, ariaLabel, fit, fitColor } =
+    opts;
+  const showFit = opts.showFit ?? false;
 
   const ciPoints = points.filter((p) => Number.isFinite(p.loPct) && Number.isFinite(p.hiPct));
   const marks: PlotNS.Markish[] = [];
@@ -159,6 +168,22 @@ export function renderAbsoluteRiskCalibrationChart(
       },
     ),
   );
+
+  // Fitted calibration line (optional overlay, above the identity but under the data). The engine fits
+  // observed-on-predicted on the PROPORTION scale; on these percent axes the identical line is
+  // y% = 100·intercept + slope·x%. A straight segment across the frame, clipped so it can't spill past the
+  // axes; solid + a distinct color so it reads apart from the dotted identity line.
+  if (showFit && fit?.defined && fitColor) {
+    marks.push(
+      Plot.line(
+        [
+          { x: 0, y: 100 * fit.intercept },
+          { x: domainMax, y: 100 * fit.intercept + fit.slope * domainMax },
+        ],
+        { x: 'x', y: 'y', stroke: fitColor, strokeWidth: 1.75, strokeLinecap: 'round', clip: true },
+      ),
+    );
+  }
 
   // 95% CI on the observed risk: vertical whiskers at each predicted-risk x (lower clamped ≥ 0), under the
   // markers so the dots stay legible on top.
@@ -208,6 +233,16 @@ export function renderAbsoluteRiskCalibrationChart(
     { i: 0, swatch: '●', label: 'Observed abs. risk (95% CI)', color: observedColor },
     { i: 1, swatch: '⋯', label: 'Perfect calibration (y = x)', color: colors.muted },
   ];
+  // Fitted-line legend row, only with the overlay on: its label carries the slope (1 = perfect calibration;
+  // an undefined fit — fewer than two usable groups — renders the slope as an em-dash and draws no line).
+  if (showFit && fit && fitColor) {
+    legend.push({
+      i: legend.length,
+      swatch: '─',
+      label: `Linear fit (slope ${formatNumber(fit.slope, 2)})`,
+      color: fitColor,
+    });
+  }
   for (const e of legend) {
     marks.push(
       Plot.text([e.swatch], {

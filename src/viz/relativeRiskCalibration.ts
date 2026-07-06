@@ -29,6 +29,7 @@ import type * as PlotNS from '@observablehq/plot';
 import { niceCeil, logTicks } from '../math/numeric';
 import { formatNumber } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
+import type { LinearFit } from '../math/calibrationFit';
 
 /** One relative-risk calibration marker: a group's predicted vs observed RR (ratio), + its CI + tip. */
 export interface RelativeRiskScatterPoint {
@@ -141,6 +142,12 @@ export interface RelativeRiskCalibrationChartOptions {
   observedColor: string;
   /** Overall study-level stats baked bottom-right (the relative-risk goodness-of-fit), muted. */
   annotationLines: string[];
+  /** Fitted calibration line (from the recompute engine, on the linear RR scale); drawn only when `showFit`. */
+  fit?: LinearFit;
+  /** Whether to overlay the fitted line + show its slope in the legend (toolbar toggle; off by default). */
+  showFit?: boolean;
+  /** Resolved color for the fitted line + its legend swatch. */
+  fitColor?: string;
   colors: RelativeRiskCalibrationColors;
   width: number;
   ariaLabel?: string;
@@ -155,8 +162,9 @@ export function renderRelativeRiskCalibrationChart(
   Plot: typeof PlotNS,
   opts: RelativeRiskCalibrationChartOptions,
 ): SVGSVGElement {
-  const { points, linearMax, logBound, axisScale, title, observedColor, annotationLines, colors, width } =
+  const { points, linearMax, logBound, axisScale, title, observedColor, annotationLines, colors, width, fit, fitColor } =
     opts;
+  const showFit = opts.showFit ?? false;
 
   const isLog = axisScale === 'log';
   const domLo = isLog ? 1 / logBound : 0;
@@ -192,6 +200,42 @@ export function renderRelativeRiskCalibrationChart(
       },
     ),
   );
+
+  // Fitted calibration line (optional overlay, above the identity but under the data), fit on the LINEAR
+  // relative-risk scale as y = intercept + slope·x. In the linear view that is a straight segment; in the
+  // log view the same RR-space line projects to a curve, so sample it geometrically and keep strictly
+  // positive y (a log axis has no room for y ≤ 0). Clipped so it can't spill past the axes.
+  if (showFit && fit?.defined && fitColor) {
+    const yAt = (x: number): number => fit.intercept + fit.slope * x;
+    let linePts: { x: number; y: number }[];
+    if (isLog) {
+      linePts = [];
+      const samples = 64;
+      const ratio = domHi / domLo;
+      for (let k = 0; k < samples; k += 1) {
+        const x = domLo * Math.pow(ratio, k / (samples - 1));
+        const y = yAt(x);
+        if (y > 0) linePts.push({ x, y });
+      }
+    } else {
+      linePts = [
+        { x: domLo, y: yAt(domLo) },
+        { x: domHi, y: yAt(domHi) },
+      ];
+    }
+    if (linePts.length >= 2) {
+      marks.push(
+        Plot.line(linePts, {
+          x: 'x',
+          y: 'y',
+          stroke: fitColor,
+          strokeWidth: 1.75,
+          strokeLinecap: 'round',
+          clip: true,
+        }),
+      );
+    }
+  }
 
   // 95% log-Wald CI on the observed RR: vertical whiskers at each predicted-RR x, under the markers so the
   // dots stay legible on top.
@@ -242,6 +286,16 @@ export function renderRelativeRiskCalibrationChart(
     { i: 1, swatch: '⋯', label: 'Perfect calibration (y = x)', color: colors.muted },
     { i: 2, swatch: '+', label: 'Population average (RR = 1)', color: colors.muted },
   ];
+  // Fitted-line legend row, only with the overlay on: its label carries the slope (1 = perfect calibration;
+  // an undefined fit — fewer than two usable groups — renders the slope as an em-dash and draws no line).
+  if (showFit && fit && fitColor) {
+    legend.push({
+      i: legend.length,
+      swatch: '─',
+      label: `Linear fit (slope ${formatNumber(fit.slope, 2)})`,
+      color: fitColor,
+    });
+  }
   for (const e of legend) {
     marks.push(
       Plot.text([e.swatch], {

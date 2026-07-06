@@ -5,10 +5,11 @@ import {
   buildRelativeRiskCalibration,
   renderRelativeRiskCalibrationChart,
 } from '../../viz/relativeRiskCalibration';
-import { OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
+import { EXPECTED_COLOR, OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
 import { captionStyle, cssVar, miniToggle } from '../../viz/chartChrome';
 import { formatGofResult } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
+import { FitToggle } from './FitToggle';
 import type { RecomputedCalibration } from '../../math/calibrationMath';
 import type { NormalizedResult } from '../../services/resultNormalizer';
 
@@ -55,6 +56,7 @@ export function RelativeRiskCalibrationSection({
 }: RelativeRiskCalibrationSectionProps) {
   const theme = useAppStore((s) => s.theme);
   const [axisScale, setAxisScale] = useState<AxisScale>('linear');
+  const [showFit, setShowFit] = useState(false);
 
   const isNcc = normalized.isNcc;
 
@@ -65,6 +67,8 @@ export function RelativeRiskCalibrationSection({
   const muted = cssVar('--app-muted', '#64748b');
   const surface = cssVar('--app-surface', '#f8fafc');
   const observedColor = pickSeriesColor(OBSERVED_COLOR, theme);
+  // Blue counter-pole to the red observed markers (validated colorblind-safe pair), used for the fit line.
+  const fitColor = pickSeriesColor(EXPECTED_COLOR, theme);
 
   // Relative-risk goodness-of-fit for THIS plot's bins, from the recompute engine so it moves with
   // interactive re-binning (equals the SDK value at the default deciles). There is no RR "E/O-in-the-large".
@@ -81,6 +85,9 @@ export function RelativeRiskCalibrationSection({
           title: TITLE,
           observedColor,
           annotationLines,
+          fit: rc.relativeRiskFit,
+          showFit,
+          fitColor,
           colors: { fg, muted, surface },
           width: ctx.width,
         });
@@ -98,7 +105,9 @@ export function RelativeRiskCalibrationSection({
     `(good risk stratification) while still systematically over- or under-estimating absolute risk (the ` +
     `absolute-risk plot). The faint RR = 1 crosshair marks the population-average stratum — below-average ` +
     `groups fall in the lower-left, above-average in the upper-right. Use the toolbar toggle to switch ` +
-    `between linear and log (multiplicative) axes.` +
+    `between linear and log (multiplicative) axes. Use the "Linear fit" toggle to overlay an ` +
+    `inverse-variance weighted least-squares line (fit on the linear RR scale) whose slope ` +
+    `(1 = perfect calibration) is shown in the legend.` +
     (isNcc
       ? ' Observed relative risks and intervals are inverse-probability-weighted (nested case-control design).'
       : '');
@@ -107,11 +116,19 @@ export function RelativeRiskCalibrationSection({
     <figure className="cal-col" aria-label={TITLE}>
       <PlotFigure
         render={render}
-        deps={[points, linearMax, logBound, theme, axisScale]}
+        deps={[points, linearMax, logBound, theme, axisScale, showFit]}
         exportName="relative-risk-calibration"
-        ariaLabel="Scatter of observed versus predicted relative risk per bin, with an identity reference line"
+        ariaLabel={
+          'Scatter of observed versus predicted relative risk per bin, with an identity reference line' +
+          (showFit ? ', plus a fitted linear calibration line' : '')
+        }
         pngBackground={surface}
-        toolbarExtras={<ScaleToggle scale={axisScale} onChange={setAxisScale} />}
+        toolbarExtras={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <FitToggle checked={showFit} onChange={setShowFit} />
+            <ScaleToggle scale={axisScale} onChange={setAxisScale} />
+          </div>
+        }
       />
       <figcaption style={captionStyle}>{caption}</figcaption>
       <CalibrationBinTable

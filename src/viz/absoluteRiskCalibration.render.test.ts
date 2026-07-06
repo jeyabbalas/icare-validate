@@ -109,3 +109,39 @@ describe('renderAbsoluteRiskCalibrationChart (real Plot)', () => {
     expect(svg.querySelector('circle')).not.toBeNull();
   });
 });
+
+describe('renderAbsoluteRiskCalibrationChart — fitted-line overlay', () => {
+  const rc = rcOf([
+    bin({ index: 0, predictedAbsoluteRisk: 0.01, observedAbsoluteRisk: 0.012 }),
+    bin({ index: 1, predictedAbsoluteRisk: 0.03, observedAbsoluteRisk: 0.028 }),
+    bin({ index: 2, predictedAbsoluteRisk: 0.06, observedAbsoluteRisk: 0.065 }),
+  ]);
+  const { points, domainMax } = buildAbsoluteRiskCalibration(rc);
+  const opts = {
+    points,
+    domainMax,
+    title: 'Absolute-risk calibration',
+    observedColor: '#e34948',
+    annotationLines: ['E/O 0.95'],
+    colors: { fg: '#0f172a', muted: '#64748b', surface: '#ffffff' },
+    width: 480,
+  };
+
+  it('draws the line and shows the slope in the legend when showFit is on', () => {
+    const fit = { slope: 1.03, intercept: -0.0004, nPoints: 3, defined: true };
+    const svg = renderAbsoluteRiskCalibrationChart(Plot, { ...opts, fit, fitColor: '#2a78d6', showFit: true });
+    expect(svgToString(svg)).toContain('Linear fit (slope 1.03)');
+  });
+
+  it('omits the overlay when showFit is off (default)', () => {
+    const fit = { slope: 1.03, intercept: -0.0004, nPoints: 3, defined: true };
+    const svg = renderAbsoluteRiskCalibrationChart(Plot, { ...opts, fit, fitColor: '#2a78d6' });
+    expect(svgToString(svg)).not.toContain('Linear fit');
+  });
+
+  it('shows an em-dash slope for an undefined fit (fewer than two usable groups)', () => {
+    const fit = { slope: NaN, intercept: NaN, nPoints: 1, defined: false };
+    const svg = renderAbsoluteRiskCalibrationChart(Plot, { ...opts, fit, fitColor: '#2a78d6', showFit: true });
+    expect(svgToString(svg)).toContain('Linear fit (slope —)');
+  });
+});

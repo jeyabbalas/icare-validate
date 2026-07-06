@@ -124,3 +124,46 @@ describe('renderRelativeRiskCalibrationChart (real Plot)', () => {
     expect(svg.querySelector('circle')).not.toBeNull();
   });
 });
+
+describe('renderRelativeRiskCalibrationChart — fitted-line overlay', () => {
+  const rc = rcOf([
+    bin({ index: 0, predictedRelativeRisk: 0.5, observedRelativeRisk: 0.55 }),
+    bin({ index: 1, predictedRelativeRisk: 1.0, observedRelativeRisk: 1.0 }),
+    bin({ index: 2, predictedRelativeRisk: 2.0, observedRelativeRisk: 1.85 }),
+  ]);
+  const { points, linearMax, logBound } = buildRelativeRiskCalibration(rc);
+  const opts = {
+    points,
+    linearMax,
+    logBound,
+    axisScale: 'linear' as const,
+    title: 'Relative-risk calibration',
+    observedColor: '#e34948',
+    annotationLines: ['RR GOF χ² 3.1 · df 2 · p 0.21'],
+    colors: { fg: '#0f172a', muted: '#64748b', surface: '#ffffff' },
+    width: 480,
+  };
+  const fit = { slope: 0.92, intercept: 0.05, nPoints: 3, defined: true };
+
+  it('draws the line + slope legend in the linear view', () => {
+    const svg = renderRelativeRiskCalibrationChart(Plot, { ...opts, fit, fitColor: '#2a78d6', showFit: true });
+    expect(svgToString(svg)).toContain('Linear fit (slope 0.92)');
+  });
+
+  it('draws the sampled curve + slope legend in the log view', () => {
+    const svg = renderRelativeRiskCalibrationChart(Plot, {
+      ...opts,
+      axisScale: 'log',
+      fit,
+      fitColor: '#2a78d6',
+      showFit: true,
+    });
+    expect(svg).toBeInstanceOf(SVGSVGElement);
+    expect(svgToString(svg)).toContain('Linear fit (slope 0.92)');
+  });
+
+  it('omits the overlay when showFit is off (default)', () => {
+    const svg = renderRelativeRiskCalibrationChart(Plot, { ...opts, fit, fitColor: '#2a78d6' });
+    expect(svgToString(svg)).not.toContain('Linear fit');
+  });
+});

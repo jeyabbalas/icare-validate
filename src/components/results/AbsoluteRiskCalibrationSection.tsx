@@ -1,14 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../state/appStore';
 import { PlotFigure } from '../../viz/PlotFigure';
 import {
   buildAbsoluteRiskCalibration,
   renderAbsoluteRiskCalibrationChart,
 } from '../../viz/absoluteRiskCalibration';
-import { OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
+import { EXPECTED_COLOR, OBSERVED_COLOR, pickSeriesColor } from '../../viz/palette';
 import { captionStyle, cssVar } from '../../viz/chartChrome';
 import { formatGofResult, formatNumber } from '../../lib/format';
 import { CalibrationBinTable } from './CalibrationBinTable';
+import { FitToggle } from './FitToggle';
 import type { RecomputedCalibration } from '../../math/calibrationMath';
 import type { ValidationResult } from '../../lib/icareTypes';
 import type { NormalizedResult } from '../../services/resultNormalizer';
@@ -35,6 +36,7 @@ export function AbsoluteRiskCalibrationSection({
 }: AbsoluteRiskCalibrationSectionProps) {
   const theme = useAppStore((s) => s.theme);
   const isNcc = normalized.isNcc;
+  const [showFit, setShowFit] = useState(false);
 
   const { points, domainMax } = useMemo(() => buildAbsoluteRiskCalibration(rc), [rc]);
   const hasData = points.length > 0;
@@ -43,6 +45,8 @@ export function AbsoluteRiskCalibrationSection({
   const muted = cssVar('--app-muted', '#64748b');
   const surface = cssVar('--app-surface', '#f8fafc');
   const observedColor = pickSeriesColor(OBSERVED_COLOR, theme);
+  // Blue counter-pole to the red observed markers (validated colorblind-safe pair), used for the fit line.
+  const fitColor = pickSeriesColor(EXPECTED_COLOR, theme);
 
   // E/O = calibration-in-the-large, read straight off the SDK scalar — it's Σpredicted/Σobserved over all
   // subjects and so is binning-invariant. H–L is the goodness-of-fit for THIS plot's bins, so it comes from
@@ -61,6 +65,9 @@ export function AbsoluteRiskCalibrationSection({
           title: TITLE,
           observedColor,
           annotationLines,
+          fit: rc.absoluteRiskFit,
+          showFit,
+          fitColor,
           colors: { fg, muted, surface },
           width: ctx.width,
         });
@@ -75,7 +82,9 @@ export function AbsoluteRiskCalibrationSection({
     `predicted absolute risk (x) versus the observed absolute risk (y) — the probability of the event ` +
     `over the risk-prediction interval (${interval}) — with 95% Wald confidence intervals on the ` +
     `observed risk. Markers on the dotted identity line are well calibrated; above the line the model ` +
-    `under-predicts risk in that group, below it over-predicts.` +
+    `under-predicts risk in that group, below it over-predicts. Use the "Linear fit" toggle to overlay an ` +
+    `inverse-variance weighted least-squares line whose slope (1 = perfect calibration) is shown in the ` +
+    `legend.` +
     (isNcc
       ? ' Observed risks and intervals are inverse-probability-weighted (nested case-control design).'
       : '');
@@ -84,10 +93,14 @@ export function AbsoluteRiskCalibrationSection({
     <figure className="cal-col" aria-label={TITLE}>
       <PlotFigure
         render={render}
-        deps={[points, domainMax, theme]}
+        deps={[points, domainMax, theme, showFit]}
         exportName="absolute-risk-calibration"
-        ariaLabel="Scatter of observed versus predicted absolute risk per bin, with 95% confidence whiskers and an identity reference line"
+        ariaLabel={
+          'Scatter of observed versus predicted absolute risk per bin, with 95% confidence whiskers and an identity reference line' +
+          (showFit ? ', plus a fitted linear calibration line' : '')
+        }
         pngBackground={surface}
+        toolbarExtras={<FitToggle checked={showFit} onChange={setShowFit} />}
       />
       <figcaption style={captionStyle}>{caption}</figcaption>
       <CalibrationBinTable
