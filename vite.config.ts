@@ -1,7 +1,24 @@
+import { copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// GitHub Pages has no SPA fallback: an unknown deep path returns the repo's 404 page. Mirroring
+// index.html to 404.html lets such a request (a hard reload before the service worker is installed)
+// still boot the app. vite-plugin-pwa globs the output after this closeBundle runs, so 404.html is
+// precached too (harmless — a byte copy of the app shell); once the SW is installed its navigateFallback
+// handles in-app navigation.
+const spa404Fallback: PluginOption = {
+  name: 'spa-404-fallback',
+  closeBundle() {
+    try {
+      copyFileSync('dist/index.html', 'dist/404.html');
+    } catch {
+      /* no index.html produced (non-SPA build) — nothing to mirror */
+    }
+  },
+};
 
 // GitHub Pages project site: https://jeyabbalas.github.io/icare-validate/
 // Everything derives from this single sub-path. All runtime asset URLs in app code
@@ -34,8 +51,11 @@ export default defineConfig({
     react(),
     VitePWA({
       strategies: 'generateSW',
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // 'prompt' (not 'autoUpdate') so a new build waits and the app surfaces a "Reload" prompt
+      // (PwaReloadPrompt via useRegisterSW) instead of silently swapping under the user; injectRegister
+      // null because that hook performs the registration itself (no double-register).
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'pwa-192.png', 'pwa-512.png'],
       manifest: {
         name: 'iCARE-validate',
@@ -63,6 +83,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
       },
     }),
+    spa404Fallback,
   ],
   worker: {
     // The wasm-icare engine runs in a module worker (`new Worker(url, { type: 'module' })`).

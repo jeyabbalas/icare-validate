@@ -5,6 +5,7 @@ import { InputBuilder } from './components/input/InputBuilder';
 import { ResultsPanel } from './components/ResultsPanel';
 import { CodePanel } from './components/code/CodePanel';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { PwaReloadPrompt } from './components/PwaReloadPrompt';
 import { ensureLoaded } from './services/icareService';
 import { useAppStore } from './state/appStore';
 
@@ -34,6 +35,7 @@ export default function App() {
           {step === 'input' ? <InputBuilder /> : step === 'results' ? <ResultsPanel /> : <CodePanel />}
         </ErrorBoundary>
       </main>
+      <PwaReloadPrompt />
     </div>
   );
 }
