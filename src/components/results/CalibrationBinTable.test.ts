@@ -163,7 +163,7 @@ describe('CalibrationBinTable — absolute-risk binning (boundaryUnit="percent")
       }),
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('1.00%–3.00%');
+    expect(text).toContain('(1.00%, 3.00%]');
     expect(text).toContain('predicted absolute-risk (%) interval');
   });
 
@@ -176,7 +176,18 @@ describe('CalibrationBinTable — absolute-risk binning (boundaryUnit="percent")
       }),
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('1.00%–3.00%');
+    expect(text).toContain('(1.00%, 3.00%]');
     expect(text).not.toContain('(0.01, 0.03]');
+  });
+
+  it('carries the inclusive [ bracket from a first bin on the percent scale', () => {
+    mount(
+      createElement(CalibrationBinTable, {
+        scale: 'absolute',
+        boundaryUnit: 'percent',
+        bins: [bin({ index: 0, lo: 0, hi: 0.03, label: '[0, 0.03]' })],
+      }),
+    );
+    expect(container.textContent ?? '').toContain('[0.00%, 3.00%]');
   });
 });

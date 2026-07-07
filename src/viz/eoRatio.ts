@@ -18,7 +18,7 @@
 
 import type * as PlotNS from '@observablehq/plot';
 import { niceCeil, logTicks } from '../math/numeric';
-import { formatCount, formatNumber, formatPercent } from '../lib/format';
+import { formatCount, formatNumber, formatPercent, formatPercentInterval } from '../lib/format';
 import type { RecomputedCalibration } from '../math/calibrationMath';
 
 /** One E/O marker: a risk group's Expected/Observed ratio + its 95% CI + tooltip. */
@@ -69,8 +69,7 @@ export function buildEoRatio(rc: RecomputedCalibration): EoRatioData {
     const hi = hasCi ? upper : NaN;
 
     const group = bin.index + 1;
-    const boundary =
-      rc.scale === 'absolute-risk' ? `${formatPercent(bin.lo)}–${formatPercent(bin.hi)}` : bin.label;
+    const boundary = rc.scale === 'absolute-risk' ? formatPercentInterval(bin) : bin.label;
     const ciText = hasCi ? ` (95% CI ${formatNumber(lo, 2)}–${formatNumber(hi, 2)})` : '';
     // Cases: raw sampled count; for ncc also the design-weighted "effective" count (Σ outcome·frequency),
     // which reconciles with the IPW-weighted observed risk in the E/O ratio.

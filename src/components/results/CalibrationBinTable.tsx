@@ -1,5 +1,5 @@
 import type { CalibrationBin } from '../../math/calibrationMath';
-import { formatCount, formatNumber, formatPercent } from '../../lib/format';
+import { formatCount, formatNumber, formatPercent, formatPercentInterval } from '../../lib/format';
 
 // The neat, dedicated presentation of the per-bin calibration statistics that accompanies the calibration
 // scatter (the same numbers the chart's hover tooltips carry, laid out for scanning). Fed directly by the
@@ -82,11 +82,12 @@ function eoCell(bin: CalibrationBin): React.ReactNode {
 
 /**
  * The group's boundary interval in the units it was binned on: the raw risk-score (linear-predictor)
- * bracket `bin.label` on the LP scale, or a predicted-risk percentage interval on the absolute-risk
- * scale (where `bin.lo`/`bin.hi` are proportions — `bin.label` is raw and would read as "(0.01, 0.03]").
+ * bracket `bin.label` on the LP scale, or the same inclusive/exclusive bracket with the bounds reformatted
+ * as predicted-risk percentages on the absolute-risk scale (where `bin.lo`/`bin.hi` are proportions, so raw
+ * `bin.label` would read as "(0.01, 0.03]").
  */
 function boundaryText(bin: CalibrationBin, unit: BoundaryUnit): string {
-  return unit === 'percent' ? `${formatPercent(bin.lo)}–${formatPercent(bin.hi)}` : bin.label;
+  return unit === 'percent' ? formatPercentInterval(bin) : bin.label;
 }
 
 /** The group number, optionally with its boundary interval beside it, muted, on a single line. */

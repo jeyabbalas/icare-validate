@@ -23,6 +23,18 @@ export function formatPercent(x: number | undefined | null, digits = 2): string 
   return typeof x === 'number' && Number.isFinite(x) ? `${(x * 100).toFixed(digits)}%` : EM_DASH;
 }
 
+/**
+ * A percent-scale bin interval carrying the bin's inclusive/exclusive brackets, matching the
+ * linear-predictor `bin.label` convention (`[lo, hi]` for the first bin, `(lo, hi]` otherwise). On the
+ * absolute-risk scale `bin.lo`/`bin.hi` are proportions, so we reformat them as percentages but keep the
+ * authoritative opening bracket carried in `bin.label` — robust to a dropped empty first bin, where the
+ * surviving bin at index 0 correctly reads `(`.
+ */
+export function formatPercentInterval(bin: { label: string; lo: number; hi: number }): string {
+  const open = bin.label.startsWith('[') ? '[' : '(';
+  return `${open}${formatPercent(bin.lo)}, ${formatPercent(bin.hi)}]`;
+}
+
 /** Integer count with thousands separators (`5285` → `5,285`); non-finite → `—`. Rounds (for weighted Σ). */
 export function formatCount(n: number | undefined | null): string {
   return typeof n === 'number' && Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : EM_DASH;
