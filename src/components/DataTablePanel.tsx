@@ -27,7 +27,7 @@ export interface DataTablePanelProps {
   height?: number;
 }
 
-export function DataTablePanel({ source, tableName, title, height = 480 }: DataTablePanelProps) {
+export function DataTablePanel({ source, tableName, title, height = 720 }: DataTablePanelProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<DataTable | null>(null);
   const [status, setStatus] = useState<Status>('loading');

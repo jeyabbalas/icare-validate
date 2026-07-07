@@ -33,7 +33,7 @@ export function MergedDataTablePanel({
   study,
   covariate,
   tableName,
-  height = 480,
+  height = 720,
 }: MergedDataTablePanelProps) {
   const [state, setState] = useState<State>({ status: 'merging' });
   const studyKey = fileKey(study);
